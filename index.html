@@ -156,9 +156,7 @@
       gap: 6px;
     }
 
-    .span-2 { grid-column: span 2; }
     .span-3 { grid-column: span 3; }
-    .span-4 { grid-column: span 4; }
     .span-6 { grid-column: span 6; }
 
     .action-grid {
@@ -262,19 +260,11 @@
       }
 
       .form-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(12, minmax(0, 1fr));
       }
 
-      .span-2,
-      .span-3,
-      .span-4,
-      .span-6 {
-        grid-column: span 1;
-      }
-
-      .span-mobile-2 {
-        grid-column: span 2;
-      }
+      .span-3 { grid-column: span 3; }
+      .span-6 { grid-column: span 6; }
 
       .action-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -287,7 +277,7 @@
     <section class="card">
       <div class="badge">Torik IOL Marker</div>
       <h1>Torik IOL Marker</h1>
-      <div class="muted">v1.42 • Orientation öncelikli terazi • Motion fallback • Axl/Hedef senkron</div>
+      <div class="muted">v1.43 • 2 satır form • Axl/Hedef senkron • Orientation öncelikli</div>
     </section>
 
     <section class="card preview-card">
@@ -304,12 +294,12 @@
 
     <section class="card controls">
       <div class="form-grid">
-        <label class="field span-6 span-mobile-2">
+        <label class="field span-6">
           İsim
           <input id="patientNameInput" type="text" placeholder="Örn: Ahmet Yılmaz" />
         </label>
 
-        <label class="field span-6 span-mobile-2">
+        <label class="field span-6">
           IOL Tipi
           <input id="iolTypeInput" type="text" placeholder="Torik IOL" />
         </label>
