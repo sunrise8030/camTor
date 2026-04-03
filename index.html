@@ -402,950 +402,983 @@
       <div class="status" id="status">Hazır. “İzin Ver ve Başlat” ile kamera ve sensör izni birlikte istenir.</div>
     </section>
   </main>
+<script>
+  const previewShellEl = document.getElementById("previewShell");
+  const videoEl = document.getElementById("video");
+  const overlayCanvasEl = document.getElementById("overlayCanvas");
+  const overlayCtx = overlayCanvasEl.getContext("2d");
 
-  <script>
-    const previewShellEl = document.getElementById("previewShell");
-    const videoEl = document.getElementById("video");
-    const overlayCanvasEl = document.getElementById("overlayCanvas");
-    const overlayCtx = overlayCanvasEl.getContext("2d");
+  const patientNameInputEl = document.getElementById("patientNameInput");
+  const iolTypeInputEl = document.getElementById("iolTypeInput");
+  const sphInputEl = document.getElementById("sphInput");
+  const cylInputEl = document.getElementById("cylInput");
+  const axlInputEl = document.getElementById("axlInput");
+  const targetAngleInputEl = document.getElementById("targetAngleInput");
+  const videoDeviceEl = document.getElementById("videoDevice");
 
-    const patientNameInputEl = document.getElementById("patientNameInput");
-    const iolTypeInputEl = document.getElementById("iolTypeInput");
-    const sphInputEl = document.getElementById("sphInput");
-    const cylInputEl = document.getElementById("cylInput");
-    const axlInputEl = document.getElementById("axlInput");
-    const targetAngleInputEl = document.getElementById("targetAngleInput");
-    const videoDeviceEl = document.getElementById("videoDevice");
+  const grantBtnEl = document.getElementById("grantBtn");
+  const captureBtnEl = document.getElementById("captureBtn");
+  const refreshBtnEl = document.getElementById("refreshBtn");
+  const torchBtnEl = document.getElementById("torchBtn");
+  const torchIconEl = document.getElementById("torchIcon");
+  const torchLabelEl = document.getElementById("torchLabel");
+  const calibrateBtnEl = document.getElementById("calibrateBtn");
 
-    const grantBtnEl = document.getElementById("grantBtn");
-    const captureBtnEl = document.getElementById("captureBtn");
-    const refreshBtnEl = document.getElementById("refreshBtn");
-    const torchBtnEl = document.getElementById("torchBtn");
-    const torchIconEl = document.getElementById("torchIcon");
-    const torchLabelEl = document.getElementById("torchLabel");
-    const calibrateBtnEl = document.getElementById("calibrateBtn");
+  const statusEl = document.getElementById("status");
+  const streamPillEl = document.getElementById("streamPill");
 
-    const statusEl = document.getElementById("status");
-    const streamPillEl = document.getElementById("streamPill");
+  let currentStream = null;
+  let currentTrack = null;
+  let permissionGranted = false;
+  let torchSupported = false;
+  let torchEnabled = false;
 
-    let currentStream = null;
-    let currentTrack = null;
-    let permissionGranted = false;
-    let torchSupported = false;
-    let torchEnabled = false;
+  let sensorPermissionGranted = false;
+  let motionListening = false;
+  let orientationListening = false;
+  let overlayAnimationId = null;
+  let isDraggingAxis = false;
 
-    let motionPermissionGranted = false;
-    let motionListening = false;
-    let orientationListening = false;
-    let overlayAnimationId = null;
-    let isDraggingAxis = false;
+  let gravityX = 0;
+  let gravityY = 0;
+  let gravityZ = 0;
 
-    let gravityX = 0;
-    let gravityY = 0;
-    let gravityZ = 0;
+  let rawRollDeg = 0;
+  let zeroOffsetDeg = 0;
+  let eventCount = 0;
 
-    let rawRollDeg = 0;
-    let zeroOffsetDeg = 0;
-    let eventCount = 0;
+  let lastGX = 0;
+  let lastGY = 0;
+  let lastGZ = 0;
 
-    let lastGX = 0;
-    let lastGY = 0;
-    let lastGZ = 0;
+  let lastAlpha = null;
+  let lastBeta = null;
+  let lastGamma = null;
 
-    let calibrationSamples = [];
-    let calibrationRunning = false;
+  let calibrationSamples = [];
+  let calibrationRunning = false;
 
-    let lastHapticStep = null;
-    let lastHapticAt = 0;
+  let lastHapticStep = null;
+  let lastHapticAt = 0;
 
-    let sensorSource = "none";
-    let lastSensorAt = 0;
+  let sensorSource = "none";
+  let lastSensorAt = 0;
+  let lastOrientationAt = 0;
+  let lastMotionAt = 0;
 
-    const LOW_PASS_ALPHA = 0.16;
-    const ORIENTATION_ALPHA = 0.22;
-    const HAPTIC_STEP_DEG = 5;
-    const HAPTIC_MIN_INTERVAL_MS = 50;
-    const SENSOR_STALE_MS = 1200;
+  const LOW_PASS_ALPHA = 0.16;
+  const ANGLE_SMOOTH_ALPHA = 0.18;
+  const HAPTIC_STEP_DEG = 5;
+  const HAPTIC_MIN_INTERVAL_MS = 50;
+  const SENSOR_TIMEOUT_MS = 1800;
 
-    function setStatus(message) {
-      statusEl.textContent = message;
+  function setStatus(message) {
+    statusEl.textContent = message;
+  }
+
+  function formatSignedAngle(value) {
+    const rounded = Math.round(value * 10) / 10;
+    const sign = rounded > 0 ? "+" : "";
+    return `${sign}${rounded.toFixed(1)}°`;
+  }
+
+  function pad2(value) {
+    return String(value).padStart(2, "0");
+  }
+
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function clampAxis180(value) {
+    return clamp(Math.round(Number(value) || 0), 0, 180);
+  }
+
+  function clampAngle360(value) {
+    let result = value % 360;
+    if (result < 0) result += 360;
+    return result;
+  }
+
+  function normalizeSigned180(value) {
+    let result = clampAngle360(value);
+    if (result > 180) result -= 360;
+    return result;
+  }
+
+  function angleToCanvasRad(deg) {
+    return (-deg * Math.PI) / 180;
+  }
+
+  function smoothAngleDeg(previous, next, alpha) {
+    const delta = normalizeSigned180(next - previous);
+    return normalizeSigned180(previous + delta * alpha);
+  }
+
+  function vibratePattern(pattern) {
+    if (navigator.vibrate) navigator.vibrate(pattern);
+  }
+
+  function maybeHapticOnAngle(angle) {
+    const snapped = Math.round(angle / HAPTIC_STEP_DEG) * HAPTIC_STEP_DEG;
+    const now = Date.now();
+    if (snapped === lastHapticStep && now - lastHapticAt < HAPTIC_MIN_INTERVAL_MS) return;
+
+    if (snapped !== lastHapticStep) {
+      if (snapped === 0 || snapped === 90 || snapped === 180) {
+        vibratePattern([18, 24, 18]);
+      } else {
+        vibratePattern(8);
+      }
+      lastHapticStep = snapped;
+      lastHapticAt = now;
     }
+  }
 
-    function formatSignedAngle(value) {
-      const rounded = Math.round(value * 10) / 10;
-      const sign = rounded > 0 ? "+" : "";
-      return `${sign}${rounded.toFixed(1)}°`;
+  function setTargetAngle(angle) {
+    const normalized = clampAxis180(angle);
+    targetAngleInputEl.value = String(normalized);
+    maybeHapticOnAngle(normalized);
+    drawOverlay();
+  }
+
+  function getTargetAngle() {
+    return clampAxis180(targetAngleInputEl.value || 63);
+  }
+
+  function getCurrentRollDeg() {
+    return normalizeSigned180(rawRollDeg - zeroOffsetDeg);
+  }
+
+  function createTimeStampFilePart(timestamp) {
+    const d = new Date(timestamp);
+    return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}_${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
+  }
+
+  function formatDateTime(timestamp) {
+    const d = new Date(timestamp);
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+  }
+
+  function sanitizePart(value, fallback = "x") {
+    const v = String(value || "").trim();
+    if (!v) return fallback;
+    return v
+      .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "-")
+      .replace(/\s+/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^[_\-.]+|[_\-.]+$/g, "")
+      .slice(0, 60) || fallback;
+  }
+
+  function normalizeAngleValue(value) {
+    return String(clampAxis180(value)).padStart(3, "0");
+  }
+
+  function getOutputBaseName() {
+    const name = sanitizePart(patientNameInputEl.value, "hasta");
+    const iol = sanitizePart(iolTypeInputEl.value, "Torik_IOL");
+    const sph = sanitizePart(sphInputEl.value, "xSph");
+    const cyl = sanitizePart(cylInputEl.value, "xCyl");
+    const axl = normalizeAngleValue(axlInputEl.value || 0);
+    const angle = normalizeAngleValue(targetAngleInputEl.value || 63);
+    return `${name}_${iol}_${sph}_${cyl}_${axl}axl_${angle}deg`;
+  }
+
+  function getSelectedDeviceLabel() {
+    return videoDeviceEl.options[videoDeviceEl.selectedIndex]?.textContent ?? "-";
+  }
+
+  function updateTorchUi() {
+    if (!torchSupported) {
+      torchLabelEl.textContent = "Torch Yok";
+      torchIconEl.textContent = "🚫";
+      torchBtnEl.disabled = true;
+      return;
     }
+    torchLabelEl.textContent = torchEnabled ? "Torch Kapat" : "Torch Aç";
+    torchIconEl.textContent = torchEnabled ? "🔦" : "💡";
+    torchBtnEl.disabled = !currentTrack;
+  }
 
-    function updateDiagnosticStatus(prefix = "") {
-      const head = prefix ? `${prefix}\n` : "";
-      statusEl.textContent =
-        `${head}kaynak=${sensorSource} • gx=${lastGX.toFixed(2)} • gy=${lastGY.toFixed(2)} • gz=${lastGZ.toFixed(2)} • roll=${formatSignedAngle(getCurrentRollDeg())} • events=${eventCount}`;
-    }
+  function updateUiState() {
+    const hasStream = Boolean(currentStream);
+    captureBtnEl.disabled = !hasStream;
+    refreshBtnEl.disabled = !permissionGranted;
+    videoDeviceEl.disabled = !permissionGranted;
+    grantBtnEl.disabled = permissionGranted && hasStream;
+    calibrateBtnEl.disabled = !sensorPermissionGranted || calibrationRunning;
+    streamPillEl.textContent = hasStream ? "Canlı" : "Kapalı";
+    updateTorchUi();
+  }
 
-    function pad2(value) {
-      return String(value).padStart(2, "0");
-    }
+  function updateDiagnosticStatus(prefix = "") {
+    const lines = [];
+    if (prefix) lines.push(prefix);
+    lines.push(`kaynak=${sensorSource}`);
+    lines.push(`roll=${formatSignedAngle(getCurrentRollDeg())}`);
+    lines.push(`events=${eventCount}`);
+    lines.push(`orientation=${lastOrientationAt ? "ok" : "yok"} • motion=${lastMotionAt ? "ok" : "yok"}`);
+    lines.push(`beta=${Number.isFinite(lastBeta) ? lastBeta.toFixed(1) : "-"} • gamma=${Number.isFinite(lastGamma) ? lastGamma.toFixed(1) : "-"}`);
+    lines.push(`gx=${lastGX.toFixed(2)} • gy=${lastGY.toFixed(2)} • gz=${lastGZ.toFixed(2)}`);
+    statusEl.textContent = lines.join("\n");
+  }
 
-    function clamp(value, min, max) {
-      return Math.min(max, Math.max(min, value));
-    }
+  function cleanupStream() {
+    if (!currentStream) return;
+    currentStream.getTracks().forEach(track => track.stop());
+    currentStream = null;
+    currentTrack = null;
+    torchSupported = false;
+    torchEnabled = false;
+    videoEl.pause();
+    videoEl.srcObject = null;
+    streamPillEl.textContent = "Kapalı";
+  }
 
-    function clampAxis180(value) {
-      return clamp(Math.round(Number(value) || 0), 0, 180);
-    }
-
-    function clampAngle360(value) {
-      let result = value % 360;
-      if (result < 0) result += 360;
-      return result;
-    }
-
-    function normalizeSigned180(value) {
-      let result = clampAngle360(value);
-      if (result > 180) result -= 360;
-      return result;
-    }
-
-    function angleToCanvasRad(deg) {
-      return (-deg * Math.PI) / 180;
-    }
-
-    function smoothAngleDeg(previous, next, alpha) {
-      const delta = normalizeSigned180(next - previous);
-      return normalizeSigned180(previous + delta * alpha);
-    }
-
-    function vibratePattern(pattern) {
-      if (navigator.vibrate) navigator.vibrate(pattern);
-    }
-
-    function maybeHapticOnAngle(angle) {
-      const snapped = Math.round(angle / HAPTIC_STEP_DEG) * HAPTIC_STEP_DEG;
-      const now = Date.now();
-      if (snapped === lastHapticStep && now - lastHapticAt < HAPTIC_MIN_INTERVAL_MS) return;
-
-      if (snapped !== lastHapticStep) {
-        if (snapped === 0 || snapped === 90 || snapped === 180) {
-          vibratePattern([18, 24, 18]);
-        } else {
-          vibratePattern(8);
+  async function shareOrDownloadFile(file) {
+    if (navigator.share && navigator.canShare) {
+      try {
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: file.name });
+          return "shared";
         }
-        lastHapticStep = snapped;
-        lastHapticAt = now;
+      } catch (error) {
+        if (error?.name === "AbortError") return "cancelled";
       }
     }
 
-    function setTargetAngle(angle) {
-      const normalized = clampAxis180(angle);
-      targetAngleInputEl.value = String(normalized);
-      maybeHapticOnAngle(normalized);
-      drawOverlay();
+    const url = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    return "downloaded";
+  }
+
+  async function requestCameraPermission() {
+    if (permissionGranted) return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("Tarayıcı kamera erişimini desteklemiyor.");
     }
 
-    function getTargetAngle() {
-      return clampAxis180(targetAngleInputEl.value || 63);
+    const tempStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } },
+      audio: false
+    });
+
+    tempStream.getTracks().forEach(track => track.stop());
+    permissionGranted = true;
+  }
+
+  async function requestSensorPermissionFromGesture() {
+    if (sensorPermissionGranted) return;
+
+    if (!window.isSecureContext) {
+      throw new Error("Sensör için HTTPS gerekli.");
     }
 
-    function getCurrentRollDeg() {
-      return normalizeSigned180(rawRollDeg - zeroOffsetDeg);
-    }
+    let supported = false;
 
-    function createTimeStampFilePart(timestamp) {
-      const d = new Date(timestamp);
-      return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}_${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
-    }
-
-    function formatDateTime(timestamp) {
-      const d = new Date(timestamp);
-      return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
-    }
-
-    function sanitizePart(value, fallback = "x") {
-      const v = String(value || "").trim();
-      if (!v) return fallback;
-      return v
-        .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "-")
-        .replace(/\s+/g, "_")
-        .replace(/_+/g, "_")
-        .replace(/^[_\-.]+|[_\-.]+$/g, "")
-        .slice(0, 60) || fallback;
-    }
-
-    function normalizeAngleValue(value) {
-      return String(clampAxis180(value)).padStart(3, "0");
-    }
-
-    function getOutputBaseName() {
-      const name = sanitizePart(patientNameInputEl.value, "hasta");
-      const iol = sanitizePart(iolTypeInputEl.value, "Torik_IOL");
-      const sph = sanitizePart(sphInputEl.value, "xSph");
-      const cyl = sanitizePart(cylInputEl.value, "xCyl");
-      const axl = normalizeAngleValue(axlInputEl.value || 0);
-      const angle = normalizeAngleValue(targetAngleInputEl.value || 63);
-      return `${name}_${iol}_${sph}_${cyl}_${axl}axl_${angle}deg`;
-    }
-
-    function updateTorchUi() {
-      if (!torchSupported) {
-        torchLabelEl.textContent = "Torch Yok";
-        torchIconEl.textContent = "🚫";
-        torchBtnEl.disabled = true;
-        return;
+    if (typeof DeviceOrientationEvent !== "undefined") {
+      supported = true;
+      if (typeof DeviceOrientationEvent.requestPermission === "function") {
+        const result = await DeviceOrientationEvent.requestPermission();
+        if (result !== "granted") {
+          throw new Error("Orientation izni verilmedi.");
+        }
       }
-      torchLabelEl.textContent = torchEnabled ? "Torch Kapat" : "Torch Aç";
-      torchIconEl.textContent = torchEnabled ? "🔦" : "💡";
-      torchBtnEl.disabled = !currentTrack;
     }
 
-    function updateUiState() {
-      const hasStream = Boolean(currentStream);
-      captureBtnEl.disabled = !hasStream;
-      refreshBtnEl.disabled = !permissionGranted;
-      videoDeviceEl.disabled = !permissionGranted;
-      grantBtnEl.disabled = permissionGranted && hasStream;
-      calibrateBtnEl.disabled = !motionPermissionGranted || calibrationRunning;
-      streamPillEl.textContent = hasStream ? "Canlı" : "Kapalı";
+    if (typeof DeviceMotionEvent !== "undefined") {
+      supported = true;
+      if (typeof DeviceMotionEvent.requestPermission === "function") {
+        const result = await DeviceMotionEvent.requestPermission();
+        if (result !== "granted") {
+          throw new Error("Motion izni verilmedi.");
+        }
+      }
+    }
+
+    if (!supported) {
+      throw new Error("Bu cihazda sensör API desteği yok.");
+    }
+
+    if (!orientationListening) {
+      window.addEventListener("deviceorientation", handleDeviceOrientation, true);
+      orientationListening = true;
+    }
+
+    if (!motionListening) {
+      window.addEventListener("devicemotion", handleDeviceMotion, true);
+      motionListening = true;
+    }
+
+    sensorPermissionGranted = true;
+  }
+
+  async function populateDevices() {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoInputs = devices.filter(device => device.kind === "videoinput");
+    const previous = videoDeviceEl.value;
+
+    videoDeviceEl.innerHTML = "";
+    if (!videoInputs.length) throw new Error("Kamera bulunamadı.");
+
+    for (const device of videoInputs) {
+      const option = document.createElement("option");
+      option.value = device.deviceId;
+      option.textContent = device.label?.trim() || `Kamera ${videoDeviceEl.options.length + 1}`;
+      videoDeviceEl.appendChild(option);
+    }
+
+    const preferredIndex =
+      videoInputs.findIndex(item => /triple|arka|back|rear/i.test(item.label || "")) >= 0
+        ? videoInputs.findIndex(item => /triple|arka|back|rear/i.test(item.label || ""))
+        : videoInputs.findIndex(item => /wide|ultra/i.test(item.label || ""));
+
+    const previousIndex = videoInputs.findIndex(item => item.deviceId === previous);
+    videoDeviceEl.selectedIndex = previousIndex >= 0 ? previousIndex : preferredIndex >= 0 ? preferredIndex : 0;
+  }
+
+  function waitForVideoReady(video) {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Video hazır olmadı.")), 5000);
+      video.addEventListener("loadedmetadata", () => {
+        clearTimeout(timeout);
+        resolve();
+      }, { once: true });
+    });
+  }
+
+  async function detectTorchSupport(track) {
+    torchSupported = false;
+    torchEnabled = false;
+    if (!track?.getCapabilities) {
       updateTorchUi();
+      return;
     }
 
-    function cleanupStream() {
-      if (!currentStream) return;
-      currentStream.getTracks().forEach(track => track.stop());
-      currentStream = null;
-      currentTrack = null;
-      torchSupported = false;
-      torchEnabled = false;
-      videoEl.pause();
-      videoEl.srcObject = null;
-      streamPillEl.textContent = "Kapalı";
-    }
+    const caps = track.getCapabilities();
+    torchSupported = Boolean(caps?.torch);
+    updateTorchUi();
+  }
 
-    function getSelectedDeviceLabel() {
-      return videoDeviceEl.options[videoDeviceEl.selectedIndex]?.textContent ?? "-";
-    }
+  async function startSelectedCamera() {
+    const deviceId = videoDeviceEl.value;
+    if (!deviceId) throw new Error("Önce kamera seç.");
 
-    async function shareOrDownloadFile(file) {
-      if (navigator.share && navigator.canShare) {
-        try {
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], title: file.name });
-            return "shared";
-          }
-        } catch (error) {
-          if (error?.name === "AbortError") return "cancelled";
-        }
+    cleanupStream();
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        deviceId: { exact: deviceId },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        frameRate: { ideal: 30 }
       }
+    });
 
-      const url = URL.createObjectURL(file);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-      return "downloaded";
-    }
+    currentStream = stream;
+    currentTrack = stream.getVideoTracks()[0];
+    videoEl.srcObject = stream;
 
-    async function requestCameraPermission() {
-      if (permissionGranted) return;
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error("Tarayıcı kamera erişimini desteklemiyor.");
-      }
-
-      const tempStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
-        audio: false
-      });
-
-      tempStream.getTracks().forEach(track => track.stop());
-      permissionGranted = true;
-    }
-
-    async function requestSensorPermissionFromGesture() {
-      if (motionPermissionGranted) return;
-
-      let anySensorSupported = false;
-
-      if (typeof DeviceMotionEvent !== "undefined") {
-        anySensorSupported = true;
-        if (typeof DeviceMotionEvent.requestPermission === "function") {
-          const motionResult = await DeviceMotionEvent.requestPermission();
-          if (motionResult !== "granted") {
-            throw new Error("Motion izni verilmedi.");
-          }
-        }
-      }
-
-      if (typeof DeviceOrientationEvent !== "undefined") {
-        anySensorSupported = true;
-        if (typeof DeviceOrientationEvent.requestPermission === "function") {
-          const orientationResult = await DeviceOrientationEvent.requestPermission();
-          if (orientationResult !== "granted") {
-            throw new Error("Orientation izni verilmedi.");
-          }
-        }
-      }
-
-      if (!anySensorSupported) {
-        throw new Error("Bu cihazda motion/orientation sensörü yok.");
-      }
-
-      if (!motionListening) {
-        window.addEventListener("devicemotion", handleDeviceMotion, true);
-        motionListening = true;
-      }
-
-      if (!orientationListening) {
-        window.addEventListener("deviceorientation", handleDeviceOrientation, true);
-        orientationListening = true;
-      }
-
-      motionPermissionGranted = true;
-    }
-
-    async function populateDevices() {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoInputs = devices.filter(device => device.kind === "videoinput");
-      const previous = videoDeviceEl.value;
-
-      videoDeviceEl.innerHTML = "";
-      if (!videoInputs.length) throw new Error("Kamera bulunamadı.");
-
-      for (const device of videoInputs) {
-        const option = document.createElement("option");
-        option.value = device.deviceId;
-        option.textContent = device.label?.trim() || `Kamera ${videoDeviceEl.options.length + 1}`;
-        videoDeviceEl.appendChild(option);
-      }
-
-      const preferredIndex =
-        videoInputs.findIndex(item => /triple|arka|back|rear/i.test(item.label || "")) >= 0
-          ? videoInputs.findIndex(item => /triple|arka|back|rear/i.test(item.label || ""))
-          : videoInputs.findIndex(item => /wide|weit|ultra/i.test(item.label || ""));
-
-      const previousIndex = videoInputs.findIndex(item => item.deviceId === previous);
-      videoDeviceEl.selectedIndex = previousIndex >= 0 ? previousIndex : preferredIndex >= 0 ? preferredIndex : 0;
-    }
-
-    function waitForVideoReady(video) {
-      return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error("Video hazır olmadı.")), 5000);
-        video.addEventListener("loadedmetadata", () => {
-          clearTimeout(timeout);
-          resolve();
-        }, { once: true });
-      });
-    }
-
-    async function detectTorchSupport(track) {
-      torchSupported = false;
-      torchEnabled = false;
-      if (!track?.getCapabilities) {
-        updateTorchUi();
-        return;
-      }
-
-      const caps = track.getCapabilities();
-      torchSupported = Boolean(caps?.torch);
-      updateTorchUi();
-    }
-
-    async function startSelectedCamera() {
-      const deviceId = videoDeviceEl.value;
-      if (!deviceId) throw new Error("Önce kamera seç.");
-
+    currentTrack.addEventListener("ended", () => {
       cleanupStream();
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: {
-          deviceId: { exact: deviceId },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          frameRate: { ideal: 30 }
-        }
-      });
-
-      currentStream = stream;
-      currentTrack = stream.getVideoTracks()[0];
-      videoEl.srcObject = stream;
-
-      currentTrack.addEventListener("ended", () => {
-        cleanupStream();
-        updateUiState();
-        setStatus("Kamera akışı sona erdi.");
-      });
-
-      await waitForVideoReady(videoEl);
-      await videoEl.play();
-      await detectTorchSupport(currentTrack);
-
       updateUiState();
-      resizeOverlayCanvas();
-      drawOverlay();
-      updateDiagnosticStatus("Kamera açıldı.");
+      setStatus("Kamera akışı sona erdi.");
+    });
+
+    await waitForVideoReady(videoEl);
+    await videoEl.play();
+    await detectTorchSupport(currentTrack);
+
+    updateUiState();
+    resizeOverlayCanvas();
+    drawOverlay();
+    updateDiagnosticStatus("Kamera açıldı.");
+  }
+
+  async function toggleTorch() {
+    if (!currentTrack || !torchSupported) return;
+
+    const nextState = !torchEnabled;
+    await currentTrack.applyConstraints({ advanced: [{ torch: nextState }] });
+
+    torchEnabled = nextState;
+    updateTorchUi();
+    updateDiagnosticStatus(torchEnabled ? "Torch açıldı." : "Torch kapatıldı.");
+  }
+
+  function getScreenAngle() {
+    if (screen.orientation && typeof screen.orientation.angle === "number") return screen.orientation.angle;
+    if (typeof window.orientation === "number") return window.orientation;
+    return 0;
+  }
+
+  function computeRollFromGravity(x, y) {
+    const screenAngle = getScreenAngle();
+    let gx = x;
+    let gy = y;
+
+    if (screenAngle === 90) {
+      gx = -y;
+      gy = x;
+    } else if (screenAngle === -90 || screenAngle === 270) {
+      gx = y;
+      gy = -x;
+    } else if (screenAngle === 180) {
+      gx = -x;
+      gy = -y;
     }
 
-    async function toggleTorch() {
-      if (!currentTrack || !torchSupported) return;
+    return Math.atan2(gx, -gy) * 180 / Math.PI;
+  }
 
-      const nextState = !torchEnabled;
-      await currentTrack.applyConstraints({ advanced: [{ torch: nextState }] });
+  function computeRollFromOrientation(beta, gamma) {
+    const screenAngle = getScreenAngle();
 
-      torchEnabled = nextState;
-      updateTorchUi();
-      updateDiagnosticStatus(torchEnabled ? "Torch açıldı." : "Torch kapatıldı.");
+    if (screenAngle === 90) return beta;
+    if (screenAngle === -90 || screenAngle === 270) return -beta;
+    if (screenAngle === 180) return -gamma;
+    return gamma;
+  }
+
+  function handleDeviceOrientation(event) {
+    if (!Number.isFinite(event.beta) || !Number.isFinite(event.gamma)) return;
+
+    lastAlpha = Number.isFinite(event.alpha) ? event.alpha : null;
+    lastBeta = event.beta;
+    lastGamma = event.gamma;
+
+    const nextRoll = computeRollFromOrientation(event.beta, event.gamma);
+    rawRollDeg = smoothAngleDeg(rawRollDeg, nextRoll, ANGLE_SMOOTH_ALPHA);
+
+    sensorSource = "orientation";
+    lastOrientationAt = Date.now();
+    lastSensorAt = lastOrientationAt;
+    eventCount += 1;
+
+    if (calibrationRunning) {
+      calibrationSamples.push(rawRollDeg);
     }
 
-    function getScreenAngle() {
-      if (screen.orientation && typeof screen.orientation.angle === "number") return screen.orientation.angle;
-      if (typeof window.orientation === "number") return window.orientation;
-      return 0;
+    if (!calibrationRunning && eventCount % 5 === 0) {
+      updateDiagnosticStatus();
     }
+  }
 
-    function computeRollFromGravity(x, y) {
-      const screenAngle = getScreenAngle();
-      let gx = x;
-      let gy = y;
+  function handleDeviceMotion(event) {
+    const g = event.accelerationIncludingGravity;
+    if (!g) return;
 
-      if (screenAngle === 90) {
-        gx = -y;
-        gy = x;
-      } else if (screenAngle === -90 || screenAngle === 270) {
-        gx = y;
-        gy = -x;
-      } else if (screenAngle === 180) {
-        gx = -x;
-        gy = -y;
-      }
+    lastGX = Number.isFinite(g.x) ? g.x : 0;
+    lastGY = Number.isFinite(g.y) ? g.y : 0;
+    lastGZ = Number.isFinite(g.z) ? g.z : 0;
 
-      return Math.atan2(gx, -gy) * 180 / Math.PI;
-    }
+    gravityX += LOW_PASS_ALPHA * (lastGX - gravityX);
+    gravityY += LOW_PASS_ALPHA * (lastGY - gravityY);
+    gravityZ += LOW_PASS_ALPHA * (lastGZ - gravityZ);
 
-    function computeRollFromOrientation(beta, gamma) {
-      const screenAngle = getScreenAngle();
+    const magnitude = Math.abs(gravityX) + Math.abs(gravityY) + Math.abs(gravityZ);
+    if (magnitude < 0.2) return;
 
-      if (screenAngle === 90) {
-        return beta;
-      }
-      if (screenAngle === -90 || screenAngle === 270) {
-        return -beta;
-      }
-      if (screenAngle === 180) {
-        return -gamma;
-      }
-      return gamma;
-    }
-
-    function markSensorAlive(source) {
-      sensorSource = source;
+    const orientationFresh = Date.now() - lastOrientationAt < SENSOR_TIMEOUT_MS;
+    if (!orientationFresh) {
+      const nextRoll = computeRollFromGravity(gravityX, gravityY);
+      rawRollDeg = smoothAngleDeg(rawRollDeg, nextRoll, ANGLE_SMOOTH_ALPHA);
+      sensorSource = "motion";
       lastSensorAt = Date.now();
-      eventCount += 1;
     }
 
-    function handleDeviceMotion(event) {
-      const g = event.accelerationIncludingGravity;
-      if (!g) return;
+    lastMotionAt = Date.now();
+    eventCount += 1;
 
-      lastGX = Number.isFinite(g.x) ? g.x : 0;
-      lastGY = Number.isFinite(g.y) ? g.y : 0;
-      lastGZ = Number.isFinite(g.z) ? g.z : 0;
-
-      gravityX += LOW_PASS_ALPHA * (lastGX - gravityX);
-      gravityY += LOW_PASS_ALPHA * (lastGY - gravityY);
-      gravityZ += LOW_PASS_ALPHA * (lastGZ - gravityZ);
-
-      const magnitude = Math.abs(gravityX) + Math.abs(gravityY) + Math.abs(gravityZ);
-      if (magnitude < 0.2) return;
-
-      const motionRoll = computeRollFromGravity(gravityX, gravityY);
-      const orientationFresh = sensorSource === "orientation" && Date.now() - lastSensorAt < SENSOR_STALE_MS;
-
-      if (!orientationFresh) {
-        rawRollDeg = smoothAngleDeg(rawRollDeg, motionRoll, ORIENTATION_ALPHA);
-        markSensorAlive("motion");
-      }
-
-      if (calibrationRunning) {
-        calibrationSamples.push(rawRollDeg);
-      }
-
-      if (!calibrationRunning && eventCount % 5 === 0) {
-        updateDiagnosticStatus();
-      }
+    if (calibrationRunning) {
+      calibrationSamples.push(rawRollDeg);
     }
 
-    function handleDeviceOrientation(event) {
-      if (!Number.isFinite(event.beta) || !Number.isFinite(event.gamma)) return;
-
-      const orientationRoll = computeRollFromOrientation(event.beta, event.gamma);
-      rawRollDeg = smoothAngleDeg(rawRollDeg, orientationRoll, ORIENTATION_ALPHA);
-      markSensorAlive("orientation");
-
-      if (calibrationRunning) {
-        calibrationSamples.push(rawRollDeg);
-      }
-
-      if (!calibrationRunning && eventCount % 5 === 0) {
-        updateDiagnosticStatus();
-      }
+    if (!calibrationRunning && eventCount % 5 === 0) {
+      updateDiagnosticStatus();
     }
+  }
 
-    async function runCalibration() {
-      if (!motionPermissionGranted) return;
+  function startSensorWatchdog() {
+    setInterval(() => {
+      if (!sensorPermissionGranted) return;
 
-      calibrationRunning = true;
-      calibrationSamples = [];
-      updateUiState();
-      updateDiagnosticStatus("Kalibrasyon başladı. Telefonu sabit tut.");
+      const now = Date.now();
+      const hasAnyRecentSensor = now - lastSensorAt < SENSOR_TIMEOUT_MS;
 
-      await new Promise(resolve => setTimeout(resolve, 1200));
-
-      if (calibrationSamples.length < 5) {
-        calibrationRunning = false;
-        updateUiState();
-        throw new Error("Yeterli sensör verisi alınamadı.");
+      if (!hasAnyRecentSensor) {
+        setStatus(
+          [
+            "Sensör verisi gelmiyor.",
+            window.isSecureContext ? "HTTPS: tamam" : "HTTPS: eksik",
+            `orientation event: ${lastOrientationAt ? "geldi ama durdu" : "hiç gelmedi"}`,
+            `motion event: ${lastMotionAt ? "geldi ama durdu" : "hiç gelmedi"}`,
+            "Safari/iPhone ise Ayarlar > Safari > Motion & Orientation Access açık olmalı."
+          ].join("\n")
+        );
       }
+    }, 1000);
+  }
 
-      zeroOffsetDeg = calibrationSamples.reduce((sum, value) => sum + value, 0) / calibrationSamples.length;
+  async function runCalibration() {
+    if (!sensorPermissionGranted) return;
+
+    calibrationRunning = true;
+    calibrationSamples = [];
+    updateUiState();
+    updateDiagnosticStatus("Kalibrasyon başladı. Telefonu sabit tut.");
+
+    await new Promise(resolve => setTimeout(resolve, 1200));
+
+    if (calibrationSamples.length < 5) {
       calibrationRunning = false;
       updateUiState();
-      drawOverlay();
-      updateDiagnosticStatus("Kalibrasyon tamamlandı.");
+      throw new Error("Yeterli sensör verisi alınamadı.");
     }
 
-    function resizeOverlayCanvas() {
-      const rect = overlayCanvasEl.getBoundingClientRect();
-      const ratio = window.devicePixelRatio || 1;
-      const width = Math.max(1, Math.round(rect.width * ratio));
-      const height = Math.max(1, Math.round(rect.height * ratio));
-
-      if (overlayCanvasEl.width !== width || overlayCanvasEl.height !== height) {
-        overlayCanvasEl.width = width;
-        overlayCanvasEl.height = height;
-      }
-    }
-
-    function drawText(ctx, text, x, y, options = {}) {
-      const {
-        font = "600 14px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
-        fillStyle = "rgba(255,255,255,0.92)",
-        align = "center",
-        baseline = "middle",
-        shadow = true
-      } = options;
-
-      ctx.save();
-      ctx.font = font;
-      ctx.fillStyle = fillStyle;
-      ctx.textAlign = align;
-      ctx.textBaseline = baseline;
-      if (shadow) {
-        ctx.shadowColor = "rgba(0,0,0,0.75)";
-        ctx.shadowBlur = 8;
-      }
-      ctx.fillText(text, x, y);
-      ctx.restore();
-    }
-
-    function drawMetadataOnContext(ctx, width, height) {
-      const target = getTargetAngle();
-      const now = Date.now();
-
-      const lines = [
-        `İsim: ${patientNameInputEl.value.trim() || "-"}`,
-        `IOL: ${iolTypeInputEl.value.trim() || "-"}`,
-        `Sph: ${sphInputEl.value.trim() || "-"}`,
-        `Cyl: ${cylInputEl.value.trim() || "-"}`,
-        `Axl: ${String(clampAxis180(axlInputEl.value || 0)).padStart(3, "0")}°`,
-        `Hedef: ${String(target).padStart(3, "0")}°`,
-        `Tilt: ${formatSignedAngle(getCurrentRollDeg())}`,
-        `Kamera: ${getSelectedDeviceLabel()}`,
-        `Tarih: ${formatDateTime(now)}`
-      ];
-
-      const padding = Math.round(width * 0.022);
-      const boxWidth = Math.round(width * 0.50);
-      const lineHeight = Math.max(24, Math.round(height * 0.027));
-      const boxHeight = padding * 2 + lines.length * lineHeight;
-
-      ctx.save();
-      ctx.fillStyle = "rgba(0,0,0,0.38)";
-      ctx.fillRect(padding, height - boxHeight - padding, boxWidth, boxHeight);
-      ctx.strokeStyle = "rgba(255,255,255,0.18)";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(padding, height - boxHeight - padding, boxWidth, boxHeight);
-
-      lines.forEach((line, index) => {
-        drawText(
-          ctx,
-          line,
-          padding + 16,
-          height - boxHeight - padding + padding + index * lineHeight + lineHeight / 2,
-          {
-            font: `700 ${Math.max(15, Math.round(height * 0.017))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
-            fillStyle: "rgba(255,255,255,0.96)",
-            align: "left",
-            baseline: "middle"
-          }
-        );
-      });
-
-      ctx.restore();
-    }
-
-    function drawOverlayOnContext(ctx, width, height, rollDeg, targetDeg) {
-      if (!ctx) return null;
-
-      ctx.clearRect(0, 0, width, height);
-
-      const cx = width / 2;
-      const cy = height / 2;
-      const radius = Math.min(width, height) * 0.33;
-      const ringRadius = radius;
-      const innerActiveRadius = ringRadius * 0.72;
-      const outerActiveRadius = ringRadius * 1.03;
-      const halfLineWidth = radius * 1.14;
-
-      ctx.save();
-      ctx.translate(cx, cy);
-
-      ctx.beginPath();
-      ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-      ctx.lineWidth = Math.max(2.2, ringRadius * 0.0105);
-      ctx.strokeStyle = "rgba(255,255,255,0.46)";
-      ctx.stroke();
-
-      for (let deg = 0; deg < 180; deg += 5) {
-        const rad = angleToCanvasRad(deg);
-        const opposite = angleToCanvasRad(deg + 180);
-        const isMajor = deg % 30 === 0;
-        const isMid = deg % 10 === 0;
-
-        const tickOuter = ringRadius + (isMajor ? ringRadius * 0.07 : isMid ? ringRadius * 0.05 : ringRadius * 0.03);
-        const tickInner = ringRadius - (isMajor ? ringRadius * 0.16 : isMid ? ringRadius * 0.11 : ringRadius * 0.07);
-
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(rad) * tickInner, Math.sin(rad) * tickInner);
-        ctx.lineTo(Math.cos(rad) * tickOuter, Math.sin(rad) * tickOuter);
-        ctx.moveTo(Math.cos(opposite) * tickInner, Math.sin(opposite) * tickInner);
-        ctx.lineTo(Math.cos(opposite) * tickOuter, Math.sin(opposite) * tickOuter);
-        ctx.lineWidth = isMajor ? 2.4 : isMid ? 1.55 : 0.95;
-        ctx.strokeStyle = isMajor ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.38)";
-        ctx.stroke();
-
-        if (isMajor) {
-          const labelRadius = ringRadius - ringRadius * 0.18;
-          drawText(ctx, String(deg), Math.cos(rad) * labelRadius, Math.sin(rad) * labelRadius, {
-            font: `800 ${Math.max(11, ringRadius * 0.078)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
-            fillStyle: "rgba(255,255,255,0.97)"
-          });
-        }
-      }
-
-      const targetRad = angleToCanvasRad(targetDeg);
-      const oppositeRad = angleToCanvasRad(targetDeg + 180);
-
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(targetRad) * ringRadius, Math.sin(targetRad) * ringRadius);
-      ctx.lineTo(Math.cos(oppositeRad) * ringRadius, Math.sin(oppositeRad) * ringRadius);
-      ctx.lineWidth = Math.max(3.2, ringRadius * 0.014);
-      ctx.strokeStyle = "rgba(77,163,255,0.98)";
-      ctx.stroke();
-
-      ctx.save();
-      ctx.rotate((rollDeg * Math.PI) / 180);
-
-      ctx.beginPath();
-      ctx.moveTo(-halfLineWidth, 0);
-      ctx.lineTo(halfLineWidth, 0);
-      ctx.lineWidth = Math.max(4.2, ringRadius * 0.018);
-      ctx.strokeStyle = "rgba(240,180,41,0.98)";
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(-ringRadius * 0.16, 0);
-      ctx.lineTo(ringRadius * 0.16, 0);
-      ctx.lineWidth = Math.max(7, ringRadius * 0.03);
-      ctx.strokeStyle = "rgba(88,211,141,0.98)";
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(0, -ringRadius * 0.24);
-      ctx.lineTo(0, ringRadius * 0.24);
-      ctx.lineWidth = Math.max(3, ringRadius * 0.013);
-      ctx.strokeStyle = "rgba(255,255,255,0.96)";
-      ctx.stroke();
-
-      ctx.restore();
-
-      ctx.beginPath();
-      ctx.arc(0, 0, Math.max(5, ringRadius * 0.024), 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255,255,255,0.98)";
-      ctx.fill();
-
-      ctx.restore();
-
-      const targetLabel = `${String(clampAxis180(targetDeg)).padStart(3, "0")}°`;
-      const tiltLabel = formatSignedAngle(rollDeg);
-
-      ctx.save();
-      const boxWidth = Math.max(150, width * 0.24);
-      const boxHeight = Math.max(56, height * 0.09);
-      const boxX = (width - boxWidth) / 2;
-      const boxY = Math.max(14, height * 0.028);
-      ctx.fillStyle = "rgba(0,0,0,0.34)";
-      ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
-      ctx.strokeStyle = "rgba(255,255,255,0.18)";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
-      ctx.restore();
-
-      drawText(ctx, targetLabel, width / 2, Math.max(42, height * 0.074), {
-        font: `900 ${Math.max(34, Math.round(height * 0.06))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
-        fillStyle: "rgba(77,163,255,0.99)"
-      });
-
-      drawText(ctx, tiltLabel, width / 2, height * 0.66, {
-        font: `800 ${Math.max(18, Math.round(height * 0.028))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
-        fillStyle: "rgba(240,180,41,0.98)"
-      });
-
-      return { cx, cy, innerActiveRadius, outerActiveRadius };
-    }
-
-    function drawOverlay() {
-      resizeOverlayCanvas();
-      drawOverlayOnContext(
-        overlayCtx,
-        overlayCanvasEl.width,
-        overlayCanvasEl.height,
-        getCurrentRollDeg(),
-        getTargetAngle()
-      );
-    }
-
-    function startOverlayLoop() {
-      if (overlayAnimationId !== null) {
-        cancelAnimationFrame(overlayAnimationId);
-      }
-
-      const loop = () => {
-        drawOverlay();
-        overlayAnimationId = requestAnimationFrame(loop);
-      };
-
-      loop();
-    }
-
-    function eventPointToAxisAngle(clientX, clientY) {
-      const rect = previewShellEl.getBoundingClientRect();
-      const x = clientX - rect.left;
-      const y = clientY - rect.top;
-      const cx = rect.width / 2;
-      const cy = rect.height / 2;
-      const dx = x - cx;
-      const dy = cy - y;
-      const r = Math.sqrt(dx * dx + dy * dy);
-
-      const ringRadius = Math.min(rect.width, rect.height) * 0.33;
-      const innerActiveRadius = ringRadius * 0.72;
-      const outerActiveRadius = ringRadius * 1.03;
-
-      if (r < innerActiveRadius || r > outerActiveRadius) return null;
-
-      const deg360 = clampAngle360(Math.atan2(dy, dx) * 180 / Math.PI);
-      return deg360 > 180 ? deg360 - 180 : deg360;
-    }
-
-    function updateAxisFromPointerEvent(event) {
-      const point = event.touches?.[0] || event;
-      if (!point) return;
-      const angle = eventPointToAxisAngle(point.clientX, point.clientY);
-      if (angle === null) return;
-      setTargetAngle(angle);
-    }
-
-    async function capturePhoto() {
-      if (!currentStream) throw new Error("Önce kamera açılmalı.");
-
-      const width = videoEl.videoWidth;
-      const height = videoEl.videoHeight;
-      if (!width || !height) throw new Error("Video hazır değil.");
-
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Canvas alınamadı.");
-
-      ctx.drawImage(videoEl, 0, 0, width, height);
-
-      const overlayCanvas = document.createElement("canvas");
-      overlayCanvas.width = width;
-      overlayCanvas.height = height;
-      const overlayCanvasCtx = overlayCanvas.getContext("2d");
-      if (!overlayCanvasCtx) throw new Error("Overlay canvas alınamadı.");
-
-      drawOverlayOnContext(
-        overlayCanvasCtx,
-        width,
-        height,
-        getCurrentRollDeg(),
-        getTargetAngle()
-      );
-
-      ctx.drawImage(overlayCanvas, 0, 0, width, height);
-      drawMetadataOnContext(ctx, width, height);
-
-      const blob = await new Promise((resolve, reject) => {
-        canvas.toBlob(result => {
-          if (!result) {
-            reject(new Error("PNG üretilemedi."));
-            return;
-          }
-          resolve(result);
-        }, "image/png");
-      });
-
-      const fileName = `${getOutputBaseName()}_${createTimeStampFilePart(Date.now())}.png`;
-      const file = new File([blob], fileName, { type: "image/png" });
-
-      const result = await shareOrDownloadFile(file);
-
-      if (result === "shared") {
-        updateDiagnosticStatus(`Paylaşım açıldı. Dosya: ${fileName}`);
-      } else if (result === "downloaded") {
-        updateDiagnosticStatus(`İndirme başlatıldı. Dosya: ${fileName}`);
-      } else {
-        updateDiagnosticStatus("Paylaşım iptal edildi.");
-      }
-    }
-
-    grantBtnEl.addEventListener("click", async () => {
-      try {
-        await requestCameraPermission();
-        try {
-          await requestSensorPermissionFromGesture();
-        } catch (sensorError) {
-          setStatus(`Kamera izni verildi.\nSensör izni alınamadı: ${sensorError.message}`);
-        }
-        await populateDevices();
-        await startSelectedCamera();
-        updateUiState();
-
-        if (motionPermissionGranted) {
-          updateDiagnosticStatus("Kamera ve sensör hazır.");
-        }
-      } catch (error) {
-        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
-      }
-    });
-
-    refreshBtnEl.addEventListener("click", async () => {
-      try {
-        await populateDevices();
-        await startSelectedCamera();
-      } catch (error) {
-        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
-      }
-    });
-
-    videoDeviceEl.addEventListener("change", async () => {
-      try {
-        await startSelectedCamera();
-      } catch (error) {
-        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
-      }
-    });
-
-    captureBtnEl.addEventListener("click", async () => {
-      try {
-        await capturePhoto();
-      } catch (error) {
-        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
-      }
-    });
-
-    torchBtnEl.addEventListener("click", async () => {
-      try {
-        await toggleTorch();
-      } catch (error) {
-        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
-      }
-    });
-
-    calibrateBtnEl.addEventListener("click", async () => {
-      try {
-        await runCalibration();
-      } catch (error) {
-        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
-      }
-    });
-
-    targetAngleInputEl.addEventListener("focus", () => targetAngleInputEl.select());
-    targetAngleInputEl.addEventListener("click", () => targetAngleInputEl.select());
-    targetAngleInputEl.addEventListener("input", () => setTargetAngle(targetAngleInputEl.value));
-
-    axlInputEl.addEventListener("focus", () => axlInputEl.select());
-    axlInputEl.addEventListener("click", () => axlInputEl.select());
-
-    previewShellEl.addEventListener("pointerdown", event => {
-      const angle = eventPointToAxisAngle(event.clientX, event.clientY);
-      if (angle === null) {
-        isDraggingAxis = false;
-        return;
-      }
-      isDraggingAxis = true;
-      previewShellEl.setPointerCapture?.(event.pointerId);
-      setTargetAngle(angle);
-    });
-
-    previewShellEl.addEventListener("pointermove", event => {
-      if (!isDraggingAxis) return;
-      updateAxisFromPointerEvent(event);
-    });
-
-    previewShellEl.addEventListener("pointerup", () => {
-      isDraggingAxis = false;
-    });
-
-    previewShellEl.addEventListener("pointercancel", () => {
-      isDraggingAxis = false;
-    });
-
-    window.addEventListener("resize", () => {
-      drawOverlay();
-    });
-
-    navigator.mediaDevices?.addEventListener?.("devicechange", async () => {
-      if (!permissionGranted) return;
-      try {
-        await populateDevices();
-        updateUiState();
-      } catch (_) {}
-    });
-
-    window.addEventListener("beforeunload", () => {
-      cleanupStream();
-      if (motionListening) {
-        window.removeEventListener("devicemotion", handleDeviceMotion, true);
-      }
-      if (orientationListening) {
-        window.removeEventListener("deviceorientation", handleDeviceOrientation, true);
-      }
-      if (overlayAnimationId !== null) {
-        cancelAnimationFrame(overlayAnimationId);
-      }
-    });
-
-    setTargetAngle(63);
+    zeroOffsetDeg = calibrationSamples.reduce((sum, value) => sum + value, 0) / calibrationSamples.length;
+    calibrationRunning = false;
     updateUiState();
     drawOverlay();
-    startOverlayLoop();
-  </script>
+    updateDiagnosticStatus("Kalibrasyon tamamlandı.");
+  }
+
+  function resizeOverlayCanvas() {
+    const rect = overlayCanvasEl.getBoundingClientRect();
+    const ratio = window.devicePixelRatio || 1;
+    const width = Math.max(1, Math.round(rect.width * ratio));
+    const height = Math.max(1, Math.round(rect.height * ratio));
+
+    if (overlayCanvasEl.width !== width || overlayCanvasEl.height !== height) {
+      overlayCanvasEl.width = width;
+      overlayCanvasEl.height = height;
+    }
+  }
+
+  function drawText(ctx, text, x, y, options = {}) {
+    const {
+      font = "600 14px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
+      fillStyle = "rgba(255,255,255,0.92)",
+      align = "center",
+      baseline = "middle",
+      shadow = true
+    } = options;
+
+    ctx.save();
+    ctx.font = font;
+    ctx.fillStyle = fillStyle;
+    ctx.textAlign = align;
+    ctx.textBaseline = baseline;
+    if (shadow) {
+      ctx.shadowColor = "rgba(0,0,0,0.75)";
+      ctx.shadowBlur = 8;
+    }
+    ctx.fillText(text, x, y);
+    ctx.restore();
+  }
+
+  function drawMetadataOnContext(ctx, width, height) {
+    const target = getTargetAngle();
+    const now = Date.now();
+
+    const lines = [
+      `İsim: ${patientNameInputEl.value.trim() || "-"}`,
+      `IOL: ${iolTypeInputEl.value.trim() || "-"}`,
+      `Sph: ${sphInputEl.value.trim() || "-"}`,
+      `Cyl: ${cylInputEl.value.trim() || "-"}`,
+      `Axl: ${String(clampAxis180(axlInputEl.value || 0)).padStart(3, "0")}°`,
+      `Hedef: ${String(target).padStart(3, "0")}°`,
+      `Tilt: ${formatSignedAngle(getCurrentRollDeg())}`,
+      `Kamera: ${getSelectedDeviceLabel()}`,
+      `Tarih: ${formatDateTime(now)}`
+    ];
+
+    const padding = Math.round(width * 0.022);
+    const boxWidth = Math.round(width * 0.50);
+    const lineHeight = Math.max(24, Math.round(height * 0.027));
+    const boxHeight = padding * 2 + lines.length * lineHeight;
+
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.38)";
+    ctx.fillRect(padding, height - boxHeight - padding, boxWidth, boxHeight);
+    ctx.strokeStyle = "rgba(255,255,255,0.18)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(padding, height - boxHeight - padding, boxWidth, boxHeight);
+
+    lines.forEach((line, index) => {
+      drawText(
+        ctx,
+        line,
+        padding + 16,
+        height - boxHeight - padding + padding + index * lineHeight + lineHeight / 2,
+        {
+          font: `700 ${Math.max(15, Math.round(height * 0.017))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+          fillStyle: "rgba(255,255,255,0.96)",
+          align: "left",
+          baseline: "middle"
+        }
+      );
+    });
+
+    ctx.restore();
+  }
+
+  function drawOverlayOnContext(ctx, width, height, rollDeg, targetDeg) {
+    if (!ctx) return null;
+
+    ctx.clearRect(0, 0, width, height);
+
+    const cx = width / 2;
+    const cy = height / 2;
+    const radius = Math.min(width, height) * 0.33;
+    const ringRadius = radius;
+    const halfLineWidth = radius * 1.14;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    ctx.beginPath();
+    ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+    ctx.lineWidth = Math.max(2.2, ringRadius * 0.0105);
+    ctx.strokeStyle = "rgba(255,255,255,0.46)";
+    ctx.stroke();
+
+    for (let deg = 0; deg < 180; deg += 5) {
+      const rad = angleToCanvasRad(deg);
+      const opposite = angleToCanvasRad(deg + 180);
+      const isMajor = deg % 30 === 0;
+      const isMid = deg % 10 === 0;
+
+      const tickOuter = ringRadius + (isMajor ? ringRadius * 0.07 : isMid ? ringRadius * 0.05 : ringRadius * 0.03);
+      const tickInner = ringRadius - (isMajor ? ringRadius * 0.16 : isMid ? ringRadius * 0.11 : ringRadius * 0.07);
+
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(rad) * tickInner, Math.sin(rad) * tickInner);
+      ctx.lineTo(Math.cos(rad) * tickOuter, Math.sin(rad) * tickOuter);
+      ctx.moveTo(Math.cos(opposite) * tickInner, Math.sin(opposite) * tickInner);
+      ctx.lineTo(Math.cos(opposite) * tickOuter, Math.sin(opposite) * tickOuter);
+      ctx.lineWidth = isMajor ? 2.4 : isMid ? 1.55 : 0.95;
+      ctx.strokeStyle = isMajor ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.38)";
+      ctx.stroke();
+
+      if (isMajor) {
+        const labelRadius = ringRadius - ringRadius * 0.18;
+        drawText(ctx, String(deg), Math.cos(rad) * labelRadius, Math.sin(rad) * labelRadius, {
+          font: `800 ${Math.max(11, ringRadius * 0.078)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+          fillStyle: "rgba(255,255,255,0.97)"
+        });
+      }
+    }
+
+    const targetRad = angleToCanvasRad(targetDeg);
+    const oppositeRad = angleToCanvasRad(targetDeg + 180);
+
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(targetRad) * ringRadius, Math.sin(targetRad) * ringRadius);
+    ctx.lineTo(Math.cos(oppositeRad) * ringRadius, Math.sin(oppositeRad) * ringRadius);
+    ctx.lineWidth = Math.max(3.2, ringRadius * 0.014);
+    ctx.strokeStyle = "rgba(77,163,255,0.98)";
+    ctx.stroke();
+
+    ctx.save();
+    ctx.rotate((rollDeg * Math.PI) / 180);
+
+    ctx.beginPath();
+    ctx.moveTo(-halfLineWidth, 0);
+    ctx.lineTo(halfLineWidth, 0);
+    ctx.lineWidth = Math.max(4.2, ringRadius * 0.018);
+    ctx.strokeStyle = "rgba(240,180,41,0.98)";
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(-ringRadius * 0.16, 0);
+    ctx.lineTo(ringRadius * 0.16, 0);
+    ctx.lineWidth = Math.max(7, ringRadius * 0.03);
+    ctx.strokeStyle = "rgba(88,211,141,0.98)";
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(0, -ringRadius * 0.24);
+    ctx.lineTo(0, ringRadius * 0.24);
+    ctx.lineWidth = Math.max(3, ringRadius * 0.013);
+    ctx.strokeStyle = "rgba(255,255,255,0.96)";
+    ctx.stroke();
+
+    ctx.restore();
+
+    ctx.beginPath();
+    ctx.arc(0, 0, Math.max(5, ringRadius * 0.024), 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.98)";
+    ctx.fill();
+
+    ctx.restore();
+
+    const targetLabel = `${String(clampAxis180(targetDeg)).padStart(3, "0")}°`;
+    const tiltLabel = formatSignedAngle(rollDeg);
+
+    ctx.save();
+    const boxWidth = Math.max(150, width * 0.24);
+    const boxHeight = Math.max(56, height * 0.09);
+    const boxX = (width - boxWidth) / 2;
+    const boxY = Math.max(14, height * 0.028);
+    ctx.fillStyle = "rgba(0,0,0,0.34)";
+    ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+    ctx.strokeStyle = "rgba(255,255,255,0.18)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+    ctx.restore();
+
+    drawText(ctx, targetLabel, width / 2, Math.max(42, height * 0.074), {
+      font: `900 ${Math.max(34, Math.round(height * 0.06))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+      fillStyle: "rgba(77,163,255,0.99)"
+    });
+
+    drawText(ctx, tiltLabel, width / 2, height * 0.66, {
+      font: `800 ${Math.max(18, Math.round(height * 0.028))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+      fillStyle: "rgba(240,180,41,0.98)"
+    });
+  }
+
+  function drawOverlay() {
+    resizeOverlayCanvas();
+    drawOverlayOnContext(
+      overlayCtx,
+      overlayCanvasEl.width,
+      overlayCanvasEl.height,
+      getCurrentRollDeg(),
+      getTargetAngle()
+    );
+  }
+
+  function startOverlayLoop() {
+    if (overlayAnimationId !== null) {
+      cancelAnimationFrame(overlayAnimationId);
+    }
+
+    const loop = () => {
+      drawOverlay();
+      overlayAnimationId = requestAnimationFrame(loop);
+    };
+
+    loop();
+  }
+
+  function eventPointToAxisAngle(clientX, clientY) {
+    const rect = previewShellEl.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
+    const dx = x - cx;
+    const dy = cy - y;
+    const r = Math.sqrt(dx * dx + dy * dy);
+
+    const ringRadius = Math.min(rect.width, rect.height) * 0.33;
+    const innerActiveRadius = ringRadius * 0.72;
+    const outerActiveRadius = ringRadius * 1.03;
+
+    if (r < innerActiveRadius || r > outerActiveRadius) return null;
+
+    const deg360 = clampAngle360(Math.atan2(dy, dx) * 180 / Math.PI);
+    return deg360 > 180 ? deg360 - 180 : deg360;
+  }
+
+  function updateAxisFromPointerEvent(event) {
+    const point = event.touches?.[0] || event;
+    if (!point) return;
+    const angle = eventPointToAxisAngle(point.clientX, point.clientY);
+    if (angle === null) return;
+    setTargetAngle(angle);
+  }
+
+  async function capturePhoto() {
+    if (!currentStream) throw new Error("Önce kamera açılmalı.");
+
+    const width = videoEl.videoWidth;
+    const height = videoEl.videoHeight;
+    if (!width || !height) throw new Error("Video hazır değil.");
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas alınamadı.");
+
+    ctx.drawImage(videoEl, 0, 0, width, height);
+
+    const overlayCanvas = document.createElement("canvas");
+    overlayCanvas.width = width;
+    overlayCanvas.height = height;
+    const overlayCanvasCtx = overlayCanvas.getContext("2d");
+    if (!overlayCanvasCtx) throw new Error("Overlay canvas alınamadı.");
+
+    drawOverlayOnContext(
+      overlayCanvasCtx,
+      width,
+      height,
+      getCurrentRollDeg(),
+      getTargetAngle()
+    );
+
+    ctx.drawImage(overlayCanvas, 0, 0, width, height);
+    drawMetadataOnContext(ctx, width, height);
+
+    const blob = await new Promise((resolve, reject) => {
+      canvas.toBlob(result => {
+        if (!result) {
+          reject(new Error("PNG üretilemedi."));
+          return;
+        }
+        resolve(result);
+      }, "image/png");
+    });
+
+    const fileName = `${getOutputBaseName()}_${createTimeStampFilePart(Date.now())}.png`;
+    const file = new File([blob], fileName, { type: "image/png" });
+
+    const result = await shareOrDownloadFile(file);
+
+    if (result === "shared") {
+      updateDiagnosticStatus(`Paylaşım açıldı. Dosya: ${fileName}`);
+    } else if (result === "downloaded") {
+      updateDiagnosticStatus(`İndirme başlatıldı. Dosya: ${fileName}`);
+    } else {
+      updateDiagnosticStatus("Paylaşım iptal edildi.");
+    }
+  }
+
+  grantBtnEl.addEventListener("click", async () => {
+    try {
+      await requestCameraPermission();
+
+      try {
+        await requestSensorPermissionFromGesture();
+      } catch (sensorError) {
+        setStatus(`Kamera izni verildi.\nSensör hatası: ${sensorError.message}`);
+      }
+
+      await populateDevices();
+      await startSelectedCamera();
+      updateUiState();
+
+      if (sensorPermissionGranted) {
+        updateDiagnosticStatus("Kamera ve sensör başlatıldı.");
+      }
+    } catch (error) {
+      setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
+    }
+  });
+
+  refreshBtnEl.addEventListener("click", async () => {
+    try {
+      await populateDevices();
+      await startSelectedCamera();
+    } catch (error) {
+      setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
+    }
+  });
+
+  videoDeviceEl.addEventListener("change", async () => {
+    try {
+      await startSelectedCamera();
+    } catch (error) {
+      setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
+    }
+  });
+
+  captureBtnEl.addEventListener("click", async () => {
+    try {
+      await capturePhoto();
+    } catch (error) {
+      setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
+    }
+  });
+
+  torchBtnEl.addEventListener("click", async () => {
+    try {
+      await toggleTorch();
+    } catch (error) {
+      setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
+    }
+  });
+
+  calibrateBtnEl.addEventListener("click", async () => {
+    try {
+      await runCalibration();
+    } catch (error) {
+      setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
+    }
+  });
+
+  targetAngleInputEl.addEventListener("focus", () => targetAngleInputEl.select());
+  targetAngleInputEl.addEventListener("click", () => targetAngleInputEl.select());
+  targetAngleInputEl.addEventListener("input", () => setTargetAngle(targetAngleInputEl.value));
+
+  axlInputEl.addEventListener("focus", () => axlInputEl.select());
+  axlInputEl.addEventListener("click", () => axlInputEl.select());
+
+  previewShellEl.addEventListener("pointerdown", event => {
+    const angle = eventPointToAxisAngle(event.clientX, event.clientY);
+    if (angle === null) {
+      isDraggingAxis = false;
+      return;
+    }
+    isDraggingAxis = true;
+    previewShellEl.setPointerCapture?.(event.pointerId);
+    setTargetAngle(angle);
+  });
+
+  previewShellEl.addEventListener("pointermove", event => {
+    if (!isDraggingAxis) return;
+    updateAxisFromPointerEvent(event);
+  });
+
+  previewShellEl.addEventListener("pointerup", () => {
+    isDraggingAxis = false;
+  });
+
+  previewShellEl.addEventListener("pointercancel", () => {
+    isDraggingAxis = false;
+  });
+
+  window.addEventListener("resize", drawOverlay);
+
+  navigator.mediaDevices?.addEventListener?.("devicechange", async () => {
+    if (!permissionGranted) return;
+    try {
+      await populateDevices();
+      updateUiState();
+    } catch (_) {}
+  });
+
+  window.addEventListener("beforeunload", () => {
+    cleanupStream();
+    if (motionListening) {
+      window.removeEventListener("devicemotion", handleDeviceMotion, true);
+    }
+    if (orientationListening) {
+      window.removeEventListener("deviceorientation", handleDeviceOrientation, true);
+    }
+    if (overlayAnimationId !== null) {
+      cancelAnimationFrame(overlayAnimationId);
+    }
+  });
+
+  setTargetAngle(63);
+  updateUiState();
+  drawOverlay();
+  startOverlayLoop();
+  startSensorWatchdog();
+</script>
+ 
 </body>
 </html>
