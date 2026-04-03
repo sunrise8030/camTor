@@ -62,13 +62,6 @@
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
     }
 
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
     .badge {
       display: inline-block;
       width: fit-content;
@@ -258,7 +251,7 @@
       color: var(--muted);
       font-size: 12px;
       white-space: pre-wrap;
-      min-height: 52px;
+      min-height: 58px;
     }
 
     .compact-refractive {
@@ -317,12 +310,10 @@
 </head>
 <body>
   <main class="app">
-    <section class="card topbar">
-      <div>
-        <div class="badge">Torik IOL Marker</div>
-        <h1>Torik IOL Marker</h1>
-        <div class="muted">v1.28 • Terazi fallback düzeltildi • Gönye çizgileri güncellendi</div>
-      </div>
+    <section class="card">
+      <div class="badge">Torik IOL Marker</div>
+      <h1>Torik IOL Marker</h1>
+      <div class="muted">v1.31 • Orientation tabanlı • Tilt değeri • Tanı satırı</div>
     </section>
 
     <section class="card preview-card">
@@ -408,7 +399,7 @@
         <span>Foto Çek • Paylaş / Kaydet</span>
       </button>
 
-      <div class="status" id="status">Hazır. “İzin Ver ve Başlat” ile kamera ve sensör izni birlikte istenir.</div>
+      <div class="status" id="status">Hazır. “İzin Ver ve Başlat” ile kamera ve orientation izni birlikte istenir.</div>
     </section>
   </main>
 
@@ -443,20 +434,16 @@
     let torchSupported = false;
     let torchEnabled = false;
 
-    let motionPermissionGranted = false;
     let orientationPermissionGranted = false;
-    let motionListening = false;
     let orientationListening = false;
-
     let overlayAnimationId = null;
     let isDraggingAxis = false;
 
-    let gravityX = 0;
-    let gravityY = 0;
-    let filteredRollDeg = 0;
     let orientationRollDeg = 0;
     let zeroOffsetDeg = 0;
-    let lastMotionAt = 0;
+    let lastBeta = null;
+    let lastGamma = null;
+    let eventCount = 0;
 
     let calibrationSamples = [];
     let calibrationRunning = false;
@@ -464,13 +451,20 @@
     let lastHapticStep = null;
     let lastHapticAt = 0;
 
-    const LOW_PASS_ALPHA = 0.12;
     const HAPTIC_STEP_DEG = 5;
     const HAPTIC_MIN_INTERVAL_MS = 50;
-    const MOTION_FRESH_MS = 600;
 
     function setStatus(message) {
       statusEl.textContent = message;
+    }
+
+    function updateDiagnosticStatus(prefix = "") {
+      const betaText = lastBeta === null ? "-" : lastBeta.toFixed(1);
+      const gammaText = lastGamma === null ? "-" : lastGamma.toFixed(1);
+      const rollText = formatSignedAngle(getCurrentRollDeg());
+      const head = prefix ? `${prefix}\n` : "";
+      statusEl.textContent =
+        `${head}beta=${betaText} • gamma=${gammaText} • roll=${rollText} • events=${eventCount}`;
     }
 
     function pad2(value) {
@@ -499,6 +493,12 @@
 
     function angleToCanvasRad(deg) {
       return (-deg * Math.PI) / 180;
+    }
+
+    function formatSignedAngle(value) {
+      const rounded = Math.round(value * 10) / 10;
+      const sign = rounded > 0 ? "+" : "";
+      return `${sign}${rounded.toFixed(1)}°`;
     }
 
     function vibratePattern(pattern) {
@@ -532,13 +532,8 @@
       return clampAxis180(targetAngleInputEl.value || 63);
     }
 
-    function getActiveRawRollDeg() {
-      const useMotion = Date.now() - lastMotionAt <= MOTION_FRESH_MS;
-      return useMotion ? filteredRollDeg : orientationRollDeg;
-    }
-
     function getCurrentRollDeg() {
-      return normalizeSigned180(getActiveRawRollDeg() - zeroOffsetDeg);
+      return normalizeSigned180(orientationRollDeg - zeroOffsetDeg);
     }
 
     function createTimeStampFilePart(timestamp) {
@@ -594,7 +589,7 @@
       refreshBtnEl.disabled = !permissionGranted;
       videoDeviceEl.disabled = !permissionGranted;
       grantBtnEl.disabled = permissionGranted && hasStream;
-      calibrateBtnEl.disabled = !(motionPermissionGranted || orientationPermissionGranted) || calibrationRunning;
+      calibrateBtnEl.disabled = !orientationPermissionGranted || calibrationRunning;
       streamPillEl.textContent = hasStream ? "Canlı" : "Kapalı";
       updateTorchUi();
     }
@@ -653,43 +648,26 @@
       permissionGranted = true;
     }
 
-    async function requestSensorPermissionsFromGesture() {
-      let motionOk = false;
-      let orientationOk = false;
+    async function requestOrientationPermissionFromGesture() {
+      if (orientationPermissionGranted) return;
 
-      if (typeof DeviceMotionEvent !== "undefined") {
-        if (typeof DeviceMotionEvent.requestPermission === "function") {
-          const result = await DeviceMotionEvent.requestPermission();
-          motionOk = result === "granted";
-        } else {
-          motionOk = true;
+      if (typeof DeviceOrientationEvent === "undefined") {
+        throw new Error("Bu cihazda orientation sensörü erişimi yok.");
+      }
+
+      if (typeof DeviceOrientationEvent.requestPermission === "function") {
+        const result = await DeviceOrientationEvent.requestPermission();
+        if (result !== "granted") {
+          throw new Error("Orientation izni verilmedi.");
         }
       }
 
-      if (typeof DeviceOrientationEvent !== "undefined") {
-        if (typeof DeviceOrientationEvent.requestPermission === "function") {
-          const result = await DeviceOrientationEvent.requestPermission();
-          orientationOk = result === "granted";
-        } else {
-          orientationOk = true;
-        }
-      }
-
-      if (motionOk && !motionListening) {
-        window.addEventListener("devicemotion", handleDeviceMotion, true);
-        motionListening = true;
-        motionPermissionGranted = true;
-      }
-
-      if (orientationOk && !orientationListening) {
+      if (!orientationListening) {
         window.addEventListener("deviceorientation", handleDeviceOrientation, true);
         orientationListening = true;
-        orientationPermissionGranted = true;
       }
 
-      if (!motionOk && !orientationOk) {
-        throw new Error("Sensör izni verilmedi.");
-      }
+      orientationPermissionGranted = true;
     }
 
     async function populateDevices() {
@@ -769,10 +747,10 @@
       await videoEl.play();
       await detectTorchSupport(currentTrack);
 
-      setStatus(`Canlı görüntü başladı.\nKamera: ${getSelectedDeviceLabel()}`);
       updateUiState();
       resizeOverlayCanvas();
       drawOverlay();
+      updateDiagnosticStatus("Kamera açıldı.");
     }
 
     async function toggleTorch() {
@@ -783,32 +761,13 @@
 
       torchEnabled = nextState;
       updateTorchUi();
-      setStatus(torchEnabled ? "Torch açıldı." : "Torch kapatıldı.");
+      updateDiagnosticStatus(torchEnabled ? "Torch açıldı." : "Torch kapatıldı.");
     }
 
     function getScreenAngle() {
       if (screen.orientation && typeof screen.orientation.angle === "number") return screen.orientation.angle;
       if (typeof window.orientation === "number") return window.orientation;
       return 0;
-    }
-
-    function computeRollFromGravity(x, y) {
-      const screenAngle = getScreenAngle();
-      let gx = x;
-      let gy = y;
-
-      if (screenAngle === 90) {
-        gx = -y;
-        gy = x;
-      } else if (screenAngle === -90 || screenAngle === 270) {
-        gx = y;
-        gy = -x;
-      } else if (screenAngle === 180) {
-        gx = -x;
-        gy = -y;
-      }
-
-      return Math.atan2(gx, gy) * 180 / Math.PI;
     }
 
     function computeRollFromOrientation(event) {
@@ -832,56 +791,46 @@
           roll = gamma;
           break;
       }
+
       return Math.max(-180, Math.min(180, roll));
     }
 
-    function handleDeviceMotion(event) {
-      const g = event.accelerationIncludingGravity;
-      if (!g) return;
-
-      const x = Number.isFinite(g.x) ? g.x : 0;
-      const y = Number.isFinite(g.y) ? g.y : 0;
-
-      gravityX += LOW_PASS_ALPHA * (x - gravityX);
-      gravityY += LOW_PASS_ALPHA * (y - gravityY);
-
-      filteredRollDeg = computeRollFromGravity(gravityX, gravityY);
-      lastMotionAt = Date.now();
+    function handleDeviceOrientation(event) {
+      lastBeta = Number.isFinite(event.beta) ? event.beta : null;
+      lastGamma = Number.isFinite(event.gamma) ? event.gamma : null;
+      orientationRollDeg = computeRollFromOrientation(event);
+      eventCount += 1;
 
       if (calibrationRunning) {
-        calibrationSamples.push(filteredRollDeg);
-      }
-    }
-
-    function handleDeviceOrientation(event) {
-      orientationRollDeg = computeRollFromOrientation(event);
-
-      if (calibrationRunning && Date.now() - lastMotionAt > MOTION_FRESH_MS) {
         calibrationSamples.push(orientationRollDeg);
+      }
+
+      if (!calibrationRunning && eventCount % 5 === 0) {
+        updateDiagnosticStatus();
       }
     }
 
     async function runCalibration() {
-      if (!(motionPermissionGranted || orientationPermissionGranted)) return;
+      if (!orientationPermissionGranted) return;
 
       calibrationRunning = true;
       calibrationSamples = [];
       updateUiState();
-      setStatus("Kalibrasyon başladı.\nTelefonu sabit tut.");
+      updateDiagnosticStatus("Kalibrasyon başladı. Telefonu sabit tut.");
 
       await new Promise(resolve => setTimeout(resolve, 1200));
 
       if (calibrationSamples.length < 5) {
         calibrationRunning = false;
         updateUiState();
-        throw new Error("Yeterli sensör verisi alınamadı.");
+        throw new Error("Yeterli orientation verisi alınamadı.");
       }
 
       zeroOffsetDeg = calibrationSamples.reduce((sum, value) => sum + value, 0) / calibrationSamples.length;
       calibrationRunning = false;
       updateUiState();
       drawOverlay();
-      setStatus("Kalibrasyon tamamlandı.");
+      updateDiagnosticStatus("Kalibrasyon tamamlandı.");
     }
 
     function resizeOverlayCanvas() {
@@ -929,13 +878,14 @@
         `Cyl: ${cylInputEl.value.trim() || "-"}`,
         `Axl: ${String(clampAxis180(axlInputEl.value || 0)).padStart(3, "0")}°`,
         `Hedef: ${String(target).padStart(3, "0")}°`,
+        `Tilt: ${formatSignedAngle(getCurrentRollDeg())}`,
         `Kamera: ${getSelectedDeviceLabel()}`,
         `Tarih: ${formatDateTime(now)}`
       ];
 
       const padding = Math.round(width * 0.022);
       const boxWidth = Math.round(width * 0.50);
-      const lineHeight = Math.max(24, Math.round(height * 0.029));
+      const lineHeight = Math.max(24, Math.round(height * 0.027));
       const boxHeight = padding * 2 + lines.length * lineHeight;
 
       ctx.save();
@@ -952,7 +902,7 @@
           padding + 16,
           height - boxHeight - padding + padding + index * lineHeight + lineHeight / 2,
           {
-            font: `700 ${Math.max(16, Math.round(height * 0.018))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+            font: `700 ${Math.max(15, Math.round(height * 0.017))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
             fillStyle: "rgba(255,255,255,0.96)",
             align: "left",
             baseline: "middle"
@@ -1056,6 +1006,7 @@
       ctx.restore();
 
       const targetLabel = `${String(clampAxis180(targetDeg)).padStart(3, "0")}°`;
+      const tiltLabel = formatSignedAngle(rollDeg);
 
       ctx.save();
       const boxWidth = Math.max(150, width * 0.24);
@@ -1072,6 +1023,11 @@
       drawText(ctx, targetLabel, width / 2, Math.max(42, height * 0.074), {
         font: `900 ${Math.max(34, Math.round(height * 0.06))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
         fillStyle: "rgba(77,163,255,0.99)"
+      });
+
+      drawText(ctx, tiltLabel, width / 2, height * 0.66, {
+        font: `800 ${Math.max(18, Math.round(height * 0.028))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+        fillStyle: "rgba(240,180,41,0.98)"
       });
 
       return { cx, cy, innerActiveRadius, outerActiveRadius };
@@ -1178,11 +1134,11 @@
       const result = await shareOrDownloadFile(file);
 
       if (result === "shared") {
-        setStatus(`Paylaşım penceresi açıldı.\nFotoğraflar’a kaydet seçeneğini kullanabilirsin.\nDosya: ${fileName}`);
+        updateDiagnosticStatus(`Paylaşım açıldı. Dosya: ${fileName}`);
       } else if (result === "downloaded") {
-        setStatus(`İndirme başlatıldı.\nDosya: ${fileName}`);
+        updateDiagnosticStatus(`İndirme başlatıldı. Dosya: ${fileName}`);
       } else {
-        setStatus("Paylaşım iptal edildi.");
+        updateDiagnosticStatus("Paylaşım iptal edildi.");
       }
     }
 
@@ -1190,16 +1146,16 @@
       try {
         await requestCameraPermission();
         try {
-          await requestSensorPermissionsFromGesture();
+          await requestOrientationPermissionFromGesture();
         } catch (sensorError) {
-          setStatus(`Kamera izni verildi.\nSensör izni alınamadı: ${sensorError.message}`);
+          setStatus(`Kamera izni verildi.\nOrientation izni alınamadı: ${sensorError.message}`);
         }
         await populateDevices();
         await startSelectedCamera();
         updateUiState();
 
-        if (motionPermissionGranted || orientationPermissionGranted) {
-          setStatus("Kamera ve terazi sensörü hazır.");
+        if (orientationPermissionGranted) {
+          updateDiagnosticStatus("Kamera ve orientation sensörü hazır.");
         }
       } catch (error) {
         setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
@@ -1292,9 +1248,12 @@
 
     window.addEventListener("beforeunload", () => {
       cleanupStream();
-      if (motionListening) window.removeEventListener("devicemotion", handleDeviceMotion, true);
-      if (orientationListening) window.removeEventListener("deviceorientation", handleDeviceOrientation, true);
-      if (overlayAnimationId !== null) cancelAnimationFrame(overlayAnimationId);
+      if (orientationListening) {
+        window.removeEventListener("deviceorientation", handleDeviceOrientation, true);
+      }
+      if (overlayAnimationId !== null) {
+        cancelAnimationFrame(overlayAnimationId);
+      }
     });
 
     setTargetAngle(63);
