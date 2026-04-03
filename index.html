@@ -1,0 +1,900 @@
+﻿<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>IOL Marking Capture</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0f16;
+      --panel: #151b24;
+      --panel-2: #10151d;
+      --border: #2a3140;
+      --text: #edf2f7;
+      --muted: #a6b0c0;
+      --accent: #4da3ff;
+      --success: #58d38d;
+      --danger: #ff6b6b;
+      --warning: #f0b429;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    body {
+      padding:
+        max(10px, env(safe-area-inset-top))
+        10px
+        max(10px, env(safe-area-inset-bottom))
+        10px;
+    }
+
+    .app {
+      height: 100%;
+      display: grid;
+      grid-template-rows: auto minmax(48vh, 56vh) 1fr;
+      gap: 10px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 12px;
+      min-height: 0;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .title-wrap {
+      display: grid;
+      gap: 4px;
+    }
+
+    .badge {
+      display: inline-block;
+      width: fit-content;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #111827;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.1;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .preview-card {
+      padding: 8px;
+      display: grid;
+      grid-template-rows: 1fr auto;
+      gap: 8px;
+      min-height: 0;
+    }
+
+    .preview-shell {
+      position: relative;
+      min-height: 0;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+      background: #000;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      background: #000;
+    }
+
+    .preview-head {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .pill {
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      background: rgba(10, 12, 16, 0.78);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(10px);
+    }
+
+    .preview-footer {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .meta {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel-2);
+      padding: 8px;
+      min-height: 54px;
+    }
+
+    .meta-label {
+      font-size: 10px;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+
+    .meta-value {
+      font-size: 12px;
+      line-height: 1.2;
+      word-break: break-word;
+    }
+
+    .form-card {
+      display: grid;
+      grid-template-rows: auto auto auto;
+      gap: 10px;
+      min-height: 0;
+    }
+
+    .grid-2,
+    .grid-3,
+    .grid-4 {
+      display: grid;
+      gap: 8px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    label.field {
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    input, select, button {
+      min-height: 46px;
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: #0f141b;
+      color: var(--text);
+      padding: 0 12px;
+      font-size: 14px;
+    }
+
+    input[type="number"] {
+      appearance: textfield;
+      -moz-appearance: textfield;
+    }
+
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)),
+        linear-gradient(180deg, #313847, #1c222d);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.08),
+        inset 0 -1px 0 rgba(0,0,0,0.25),
+        0 1px 1px rgba(0,0,0,0.35),
+        0 8px 18px rgba(0,0,0,0.16);
+    }
+
+    button:disabled,
+    input:disabled,
+    select:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .btn-icon {
+      font-size: 22px;
+      line-height: 1;
+      flex: 0 0 auto;
+    }
+
+    .success { border-color: rgba(88, 211, 141, 0.45); }
+    .danger { border-color: rgba(255, 107, 107, 0.45); }
+    .warning { border-color: rgba(240, 180, 41, 0.45); }
+
+    .status {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel-2);
+      padding: 10px 12px;
+      color: var(--muted);
+      font-size: 13px;
+      white-space: pre-wrap;
+      min-height: 72px;
+    }
+
+    .recording {
+      border-color: rgba(255, 107, 107, 0.9) !important;
+      box-shadow:
+        0 0 0 2px rgba(255, 107, 107, 0.22),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 860px) {
+      .preview-footer,
+      .grid-2,
+      .grid-3,
+      .grid-4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      h1 {
+        font-size: 19px;
+      }
+
+      .app {
+        grid-template-rows: auto minmax(46vh, 54vh) 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="card topbar">
+      <div class="title-wrap">
+        <div class="badge">IOL Capture iPhone</div>
+        <h1>Direkt kayıt • Galerisiz • Büyük canlı görüntü</h1>
+        <div class="muted">v1.14 • iPhone Safari odaklı sade sürüm</div>
+      </div>
+    </section>
+
+    <section class="card preview-card">
+      <div class="preview-shell">
+        <video id="video" autoplay playsinline muted></video>
+
+        <div class="preview-head">
+          <div class="pill" id="modePill">📸 Foto</div>
+          <div class="pill" id="streamPill">Hazır değil</div>
+        </div>
+      </div>
+
+      <div class="preview-footer">
+        <div class="meta">
+          <div class="meta-label">Kamera</div>
+          <div class="meta-value" id="deviceInfo">-</div>
+        </div>
+        <div class="meta">
+          <div class="meta-label">Çözünürlük</div>
+          <div class="meta-value" id="resolutionInfo">-</div>
+        </div>
+        <div class="meta">
+          <div class="meta-label">Torch</div>
+          <div class="meta-value" id="torchInfo">Destek bilinmiyor</div>
+        </div>
+        <div class="meta">
+          <div class="meta-label">Süre</div>
+          <div class="meta-value" id="durationInfo">00:00</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card form-card">
+      <div class="grid-2">
+        <label class="field">
+          İsim
+          <input id="patientNameInput" type="text" placeholder="Örn: Ahmet Yılmaz" />
+        </label>
+
+        <label class="field">
+          IOL Tipi
+          <input id="iolTypeInput" type="text" placeholder="Örn: AcrySof Toric" />
+        </label>
+      </div>
+
+      <div class="grid-4">
+        <label class="field">
+          Diyoptri
+          <input id="diopterInput" type="text" placeholder="Örn: 22.5D" />
+        </label>
+
+        <label class="field">
+          Hedef Açı
+          <input id="targetAngleInput" type="number" min="0" max="359" step="1" placeholder="Örn: 87" />
+        </label>
+
+        <label class="field">
+          Kamera
+          <select id="videoDevice"></select>
+        </label>
+
+        <label class="field">
+          Işık
+          <button id="torchBtn" type="button" disabled>
+            <span class="btn-icon" id="torchIcon">💡</span>
+            <span id="torchLabel">Işık Aç</span>
+          </button>
+        </label>
+      </div>
+
+      <div class="grid-4">
+        <button id="grantBtn" class="success" type="button">
+          <span class="btn-icon">🔓</span>
+          <span>İzin Ver ve Başlat</span>
+        </button>
+
+        <button id="modeToggleBtn" type="button">
+          <span class="btn-icon" id="modeToggleIcon">📸</span>
+          <span id="modeToggleLabel">Foto Modu</span>
+        </button>
+
+        <button id="captureBtn" class="success" type="button" disabled>
+          <span class="btn-icon" id="captureBtnIcon">📸</span>
+          <span id="captureBtnLabel">Foto Çek ve Kaydet</span>
+        </button>
+
+        <button id="refreshBtn" type="button" disabled>
+          <span class="btn-icon">🔄</span>
+          <span>Yenile</span>
+        </button>
+      </div>
+
+      <div class="status" id="status">Hazır. Önce izin ver.</div>
+      <div class="hint">iPhone Safari’de kayıt sonrası destek varsa paylaşım ekranı açılır, yoksa dosya indirilir.</div>
+    </section>
+  </main>
+
+  <script>
+    const videoEl = document.getElementById("video");
+    const patientNameInputEl = document.getElementById("patientNameInput");
+    const iolTypeInputEl = document.getElementById("iolTypeInput");
+    const diopterInputEl = document.getElementById("diopterInput");
+    const targetAngleInputEl = document.getElementById("targetAngleInput");
+    const videoDeviceEl = document.getElementById("videoDevice");
+
+    const grantBtnEl = document.getElementById("grantBtn");
+    const modeToggleBtnEl = document.getElementById("modeToggleBtn");
+    const modeToggleIconEl = document.getElementById("modeToggleIcon");
+    const modeToggleLabelEl = document.getElementById("modeToggleLabel");
+    const captureBtnEl = document.getElementById("captureBtn");
+    const captureBtnIconEl = document.getElementById("captureBtnIcon");
+    const captureBtnLabelEl = document.getElementById("captureBtnLabel");
+    const refreshBtnEl = document.getElementById("refreshBtn");
+
+    const torchBtnEl = document.getElementById("torchBtn");
+    const torchIconEl = document.getElementById("torchIcon");
+    const torchLabelEl = document.getElementById("torchLabel");
+
+    const statusEl = document.getElementById("status");
+    const deviceInfoEl = document.getElementById("deviceInfo");
+    const resolutionInfoEl = document.getElementById("resolutionInfo");
+    const torchInfoEl = document.getElementById("torchInfo");
+    const durationInfoEl = document.getElementById("durationInfo");
+    const modePillEl = document.getElementById("modePill");
+    const streamPillEl = document.getElementById("streamPill");
+
+    let currentStream = null;
+    let currentTrack = null;
+    let permissionGranted = false;
+
+    let captureMode = "photo";
+    let torchSupported = false;
+    let torchEnabled = false;
+
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let recordingStartedAt = null;
+    let recordingTimerId = null;
+    let selectedRecordingMimeType = "";
+
+    function setStatus(message) {
+      statusEl.textContent = message;
+    }
+
+    function pad2(value) {
+      return String(value).padStart(2, "0");
+    }
+
+    function createTimeStampFilePart(timestamp) {
+      const d = new Date(timestamp);
+      return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}_${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
+    }
+
+    function sanitizePart(value, fallback = "x") {
+      const v = String(value || "").trim();
+      if (!v) return fallback;
+      return v
+        .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "-")
+        .replace(/\s+/g, "_")
+        .replace(/_+/g, "_")
+        .replace(/^[_\-.]+|[_\-.]+$/g, "")
+        .slice(0, 60) || fallback;
+    }
+
+    function normalizeAngleValue(value) {
+      const num = Number(value);
+      if (!Number.isFinite(num)) return "";
+      let normalized = Math.round(num) % 360;
+      if (normalized < 0) normalized += 360;
+      return String(normalized).padStart(3, "0");
+    }
+
+    function getOutputBaseName() {
+      const name = sanitizePart(patientNameInputEl.value, "hasta");
+      const iol = sanitizePart(iolTypeInputEl.value, "IOL");
+      const diopter = sanitizePart(diopterInputEl.value, "xD");
+      const angle = normalizeAngleValue(targetAngleInputEl.value) || "000";
+      return `${name}_${iol}_${diopter}_${angle}deg`;
+    }
+
+    function updateModeUi() {
+      const isVideo = captureMode === "video";
+      modeToggleIconEl.textContent = isVideo ? "🎥" : "📸";
+      modeToggleLabelEl.textContent = isVideo ? "Video Modu" : "Foto Modu";
+      captureBtnIconEl.textContent = isVideo
+        ? (mediaRecorder && mediaRecorder.state === "recording" ? "⏹️" : "🎥")
+        : "📸";
+      captureBtnLabelEl.textContent = isVideo
+        ? (mediaRecorder && mediaRecorder.state === "recording" ? "Videoyu Bitir ve Kaydet" : "Video Başlat")
+        : "Foto Çek ve Kaydet";
+      modePillEl.textContent = isVideo ? "🎥 Video" : "📸 Foto";
+      captureBtnEl.classList.toggle("recording", Boolean(mediaRecorder && mediaRecorder.state === "recording"));
+    }
+
+    function updateTorchUi() {
+      if (!torchSupported) {
+        torchInfoEl.textContent = "Destek yok";
+        torchLabelEl.textContent = "Işık Yok";
+        torchIconEl.textContent = "🚫";
+        torchBtnEl.disabled = true;
+        return;
+      }
+
+      torchInfoEl.textContent = torchEnabled ? "Açık" : "Kapalı";
+      torchLabelEl.textContent = torchEnabled ? "Işığı Kapat" : "Işık Aç";
+      torchIconEl.textContent = torchEnabled ? "🔦" : "💡";
+      torchBtnEl.disabled = !currentTrack;
+    }
+
+    function updateUiState() {
+      const hasStream = Boolean(currentStream);
+      const isRecording = Boolean(mediaRecorder && mediaRecorder.state === "recording");
+
+      captureBtnEl.disabled = !hasStream;
+      refreshBtnEl.disabled = !permissionGranted || isRecording;
+      videoDeviceEl.disabled = !permissionGranted || isRecording;
+      modeToggleBtnEl.disabled = isRecording;
+      grantBtnEl.disabled = permissionGranted && hasStream;
+
+      streamPillEl.textContent = hasStream ? "Canlı" : "Kapalı";
+      updateModeUi();
+      updateTorchUi();
+    }
+
+    function setDurationLabel(ms = 0) {
+      const totalSec = Math.floor(ms / 1000);
+      durationInfoEl.textContent = `${pad2(Math.floor(totalSec / 60))}:${pad2(totalSec % 60)}`;
+    }
+
+    function startRecordingTimer() {
+      stopRecordingTimer();
+      recordingStartedAt = Date.now();
+      recordingTimerId = window.setInterval(() => {
+        setDurationLabel(Date.now() - recordingStartedAt);
+      }, 250);
+    }
+
+    function stopRecordingTimer() {
+      if (recordingTimerId !== null) {
+        clearInterval(recordingTimerId);
+        recordingTimerId = null;
+      }
+    }
+
+    function cleanupStream() {
+      if (!currentStream) return;
+      currentStream.getTracks().forEach(track => track.stop());
+      currentStream = null;
+      currentTrack = null;
+      torchSupported = false;
+      torchEnabled = false;
+      videoEl.pause();
+      videoEl.srcObject = null;
+      streamPillEl.textContent = "Kapalı";
+      deviceInfoEl.textContent = "-";
+      resolutionInfoEl.textContent = "-";
+      setDurationLabel(0);
+    }
+
+    function getSelectedDeviceLabel() {
+      return videoDeviceEl.options[videoDeviceEl.selectedIndex]?.textContent ?? "-";
+    }
+
+    function pickSupportedVideoMimeType() {
+      const types = [
+        "video/mp4;codecs=hvc1,mp4a.40.2",
+        "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+        "video/mp4;codecs=avc1,mp4a.40.2",
+        "video/mp4",
+        "video/webm;codecs=vp9,opus",
+        "video/webm;codecs=vp8,opus",
+        "video/webm"
+      ];
+
+      for (const type of types) {
+        if (window.MediaRecorder && MediaRecorder.isTypeSupported(type)) {
+          return type;
+        }
+      }
+      return "";
+    }
+
+    async function shareOrDownloadFile(file) {
+      if (navigator.share && navigator.canShare) {
+        try {
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: file.name
+            });
+            return;
+          }
+        } catch (error) {
+          if (error && error.name === "AbortError") {
+            setStatus("Paylaşım iptal edildi.");
+            return;
+          }
+        }
+      }
+
+      const url = URL.createObjectURL(file);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+
+    async function requestPermission() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("Tarayıcı kamera erişimini desteklemiyor.");
+      }
+
+      const tempStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+        audio: false
+      });
+
+      tempStream.getTracks().forEach(track => track.stop());
+      permissionGranted = true;
+      selectedRecordingMimeType = pickSupportedVideoMimeType();
+    }
+
+    async function populateDevices() {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoInputs = devices.filter(device => device.kind === "videoinput");
+      const previous = videoDeviceEl.value;
+
+      videoDeviceEl.innerHTML = "";
+
+      if (!videoInputs.length) {
+        throw new Error("Kamera bulunamadı.");
+      }
+
+      for (const device of videoInputs) {
+        const option = document.createElement("option");
+        option.value = device.deviceId;
+        option.textContent = device.label?.trim() || `Kamera ${videoDeviceEl.options.length + 1}`;
+        videoDeviceEl.appendChild(option);
+      }
+
+      const preferredIndex =
+        videoInputs.findIndex(item => /triple|arka|back|rear/i.test(item.label || "")) >= 0
+          ? videoInputs.findIndex(item => /triple|arka|back|rear/i.test(item.label || ""))
+          : videoInputs.findIndex(item => /wide|weit|ultra/i.test(item.label || ""));
+
+      const previousIndex = videoInputs.findIndex(item => item.deviceId === previous);
+
+      videoDeviceEl.selectedIndex =
+        previousIndex >= 0
+          ? previousIndex
+          : preferredIndex >= 0
+            ? preferredIndex
+            : 0;
+    }
+
+    function waitForVideoReady(video) {
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("Video hazır olmadı.")), 5000);
+        video.addEventListener("loadedmetadata", () => {
+          clearTimeout(timeout);
+          resolve();
+        }, { once: true });
+      });
+    }
+
+    async function detectTorchSupport(track) {
+      torchSupported = false;
+      torchEnabled = false;
+
+      if (!track?.getCapabilities) {
+        updateTorchUi();
+        return;
+      }
+
+      const caps = track.getCapabilities();
+      torchSupported = Boolean(caps?.torch);
+      updateTorchUi();
+    }
+
+    async function startSelectedCamera() {
+      const deviceId = videoDeviceEl.value;
+      if (!deviceId) throw new Error("Önce kamera seç.");
+
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        throw new Error("Kayıt sürerken kamera değiştirilemez.");
+      }
+
+      cleanupStream();
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          deviceId: { exact: deviceId },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30 }
+        }
+      });
+
+      currentStream = stream;
+      currentTrack = stream.getVideoTracks()[0];
+      videoEl.srcObject = stream;
+
+      currentTrack.addEventListener("ended", () => {
+        cleanupStream();
+        updateUiState();
+        setStatus("Kamera akışı sona erdi.");
+      });
+
+      await waitForVideoReady(videoEl);
+      await videoEl.play();
+
+      const settings = currentTrack.getSettings();
+      deviceInfoEl.textContent = getSelectedDeviceLabel();
+      resolutionInfoEl.textContent = `${settings.width ?? "?"}x${settings.height ?? "?"} @ ${settings.frameRate ?? "?"}fps`;
+
+      await detectTorchSupport(currentTrack);
+
+      setStatus(`Canlı görüntü başladı.\nKamera: ${getSelectedDeviceLabel()}\nÇözünürlük: ${resolutionInfoEl.textContent}`);
+      updateUiState();
+    }
+
+    async function toggleTorch() {
+      if (!currentTrack || !torchSupported) return;
+
+      const nextState = !torchEnabled;
+      await currentTrack.applyConstraints({
+        advanced: [{ torch: nextState }]
+      });
+
+      torchEnabled = nextState;
+      updateTorchUi();
+      setStatus(torchEnabled ? "Işık açıldı." : "Işık kapatıldı.");
+    }
+
+    async function capturePhotoAndSave() {
+      if (!currentStream) throw new Error("Önce kamera açılmalı.");
+
+      const width = videoEl.videoWidth;
+      const height = videoEl.videoHeight;
+      if (!width || !height) throw new Error("Video hazır değil.");
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas alınamadı.");
+
+      ctx.drawImage(videoEl, 0, 0, width, height);
+
+      const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(result => {
+          if (!result) {
+            reject(new Error("PNG üretilemedi."));
+            return;
+          }
+          resolve(result);
+        }, "image/png");
+      });
+
+      const fileName = `${getOutputBaseName()}_${createTimeStampFilePart(Date.now())}.png`;
+      const file = new File([blob], fileName, { type: "image/png" });
+
+      await shareOrDownloadFile(file);
+      setStatus(`Foto kaydedildi.\nDosya: ${fileName}`);
+    }
+
+    async function startVideoRecording() {
+      if (!currentStream) throw new Error("Önce kamera açılmalı.");
+      if (!window.MediaRecorder) throw new Error("Video kayıt desteklenmiyor.");
+      if (!selectedRecordingMimeType) throw new Error("Uygun video formatı bulunamadı.");
+
+      recordedChunks = [];
+      mediaRecorder = new MediaRecorder(currentStream, { mimeType: selectedRecordingMimeType });
+
+      mediaRecorder.addEventListener("dataavailable", event => {
+        if (event.data && event.data.size > 0) {
+          recordedChunks.push(event.data);
+        }
+      });
+
+      mediaRecorder.addEventListener("error", event => {
+        const message = event.error?.message || "MediaRecorder hatası";
+        setStatus(`Hata:\n${message}`);
+      });
+
+      mediaRecorder.start(500);
+      startRecordingTimer();
+      updateUiState();
+      setStatus("Video kaydı başladı.");
+    }
+
+    async function stopVideoRecordingAndSave() {
+      if (!mediaRecorder || mediaRecorder.state !== "recording") return;
+
+      const recorder = mediaRecorder;
+
+      await new Promise(resolve => {
+        recorder.addEventListener("stop", resolve, { once: true });
+        recorder.stop();
+      });
+
+      stopRecordingTimer();
+
+      const mimeType = selectedRecordingMimeType || recorder.mimeType || "video/mp4";
+      const extension = mimeType.includes("webm") ? "webm" : "mp4";
+      const blob = new Blob(recordedChunks, { type: mimeType });
+      const fileName = `${getOutputBaseName()}_${createTimeStampFilePart(Date.now())}.${extension}`;
+      const file = new File([blob], fileName, { type: mimeType });
+
+      mediaRecorder = null;
+      recordedChunks = [];
+      updateUiState();
+
+      await shareOrDownloadFile(file);
+      setStatus(`Video kaydedildi.\nDosya: ${fileName}`);
+      setDurationLabel(0);
+    }
+
+    async function handleCaptureAction() {
+      if (captureMode === "photo") {
+        await capturePhotoAndSave();
+        return;
+      }
+
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        await stopVideoRecordingAndSave();
+        return;
+      }
+
+      await startVideoRecording();
+    }
+
+    grantBtnEl.addEventListener("click", async () => {
+      try {
+        await requestPermission();
+        await populateDevices();
+        await startSelectedCamera();
+      } catch (error) {
+        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
+      }
+    });
+
+    refreshBtnEl.addEventListener("click", async () => {
+      try {
+        await populateDevices();
+        await startSelectedCamera();
+      } catch (error) {
+        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
+      }
+    });
+
+    videoDeviceEl.addEventListener("change", async () => {
+      try {
+        await startSelectedCamera();
+      } catch (error) {
+        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
+      }
+    });
+
+    modeToggleBtnEl.addEventListener("click", () => {
+      if (mediaRecorder && mediaRecorder.state === "recording") return;
+      captureMode = captureMode === "photo" ? "video" : "photo";
+      updateUiState();
+      setStatus(captureMode === "photo" ? "Foto modu seçildi." : "Video modu seçildi.");
+    });
+
+    captureBtnEl.addEventListener("click", async () => {
+      try {
+        await handleCaptureAction();
+      } catch (error) {
+        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
+      }
+    });
+
+    torchBtnEl.addEventListener("click", async () => {
+      try {
+        await toggleTorch();
+      } catch (error) {
+        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
+      }
+    });
+
+    navigator.mediaDevices?.addEventListener?.("devicechange", async () => {
+      if (!permissionGranted) return;
+      try {
+        await populateDevices();
+        updateUiState();
+      } catch (_) {}
+    });
+
+    window.addEventListener("beforeunload", () => {
+      stopRecordingTimer();
+      cleanupStream();
+    });
+
+    updateUiState();
+    setStatus("Hazır. Önce izin ver.");
+  </script>
+</body>
+</html>
