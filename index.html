@@ -171,8 +171,9 @@
 
     .action-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+      grid-template-columns: 1.3fr 1fr 1fr 1fr 1fr;
       gap: 6px;
+      align-items: end;
     }
 
     label.field {
@@ -205,13 +206,6 @@
     input[type="number"]::-webkit-inner-spin-button {
       -webkit-appearance: none;
       margin: 0;
-    }
-
-    input[type="range"] {
-      min-height: 32px;
-      padding: 0;
-      background: transparent;
-      border: none;
     }
 
     button {
@@ -269,20 +263,6 @@
       min-height: 52px;
     }
 
-    .range-row {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .range-value {
-      font-size: 12px;
-      color: var(--text);
-      min-width: 44px;
-      text-align: right;
-    }
-
     .compact-refractive {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
@@ -332,6 +312,10 @@
       .span-mobile-2 {
         grid-column: span 2;
       }
+
+      .action-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
     }
   </style>
 </head>
@@ -341,7 +325,7 @@
       <div>
         <div class="badge">Torik IOL Marker</div>
         <h1>Torik IOL Marker</h1>
-        <div class="muted">v1.25 • Safari zoom dayanıklı • Sph Cyl Axl kompakt</div>
+        <div class="muted">v1.26 • Düzen düzeltildi • Slider kaldırıldı • Gönye inceltildi</div>
       </div>
     </section>
 
@@ -392,14 +376,6 @@
           <input id="targetAngleInput" type="number" min="0" max="180" step="1" value="63" />
         </label>
       </div>
-
-      <label class="field">
-        Hedef Açı Slider
-        <div class="range-row">
-          <input id="targetAngleSlider" type="range" min="0" max="180" step="1" value="63" />
-          <span id="targetAngleSliderValue" class="range-value">63°</span>
-        </div>
-      </label>
 
       <div class="action-grid">
         <label class="field">
@@ -452,8 +428,6 @@
     const cylInputEl = document.getElementById("cylInput");
     const axlInputEl = document.getElementById("axlInput");
     const targetAngleInputEl = document.getElementById("targetAngleInput");
-    const targetAngleSliderEl = document.getElementById("targetAngleSlider");
-    const targetAngleSliderValueEl = document.getElementById("targetAngleSliderValue");
     const videoDeviceEl = document.getElementById("videoDevice");
 
     const grantBtnEl = document.getElementById("grantBtn");
@@ -549,8 +523,6 @@
     function setTargetAngle(angle) {
       const normalized = clampAxis180(angle);
       targetAngleInputEl.value = String(normalized);
-      targetAngleSliderEl.value = String(normalized);
-      targetAngleSliderValueEl.textContent = `${normalized}°`;
       maybeHapticOnAngle(normalized);
       drawOverlay();
     }
@@ -947,6 +919,8 @@
       const cy = height / 2;
       const radius = Math.min(width, height) * 0.33;
       const ringRadius = radius;
+      const innerActiveRadius = ringRadius * 0.72;
+      const outerActiveRadius = ringRadius * 1.03;
       const halfLineWidth = radius * 1.14;
 
       ctx.save();
@@ -954,7 +928,7 @@
 
       ctx.beginPath();
       ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-      ctx.lineWidth = Math.max(2.5, ringRadius * 0.011);
+      ctx.lineWidth = Math.max(2, ringRadius * 0.009);
       ctx.strokeStyle = "rgba(255,255,255,0.46)";
       ctx.stroke();
 
@@ -963,22 +937,22 @@
         const opposite = angleToCanvasRad(deg + 180);
         const isMajor = deg % 30 === 0;
         const isMid = deg % 10 === 0;
-        const tickOuter = ringRadius;
-        const tickInner = ringRadius - (isMajor ? ringRadius * 0.10 : isMid ? ringRadius * 0.065 : ringRadius * 0.035);
+        const tickOuter = ringRadius + (isMajor ? ringRadius * 0.05 : isMid ? ringRadius * 0.035 : ringRadius * 0.02);
+        const tickInner = ringRadius - (isMajor ? ringRadius * 0.14 : isMid ? ringRadius * 0.095 : ringRadius * 0.055);
 
         ctx.beginPath();
         ctx.moveTo(Math.cos(rad) * tickInner, Math.sin(rad) * tickInner);
         ctx.lineTo(Math.cos(rad) * tickOuter, Math.sin(rad) * tickOuter);
         ctx.moveTo(Math.cos(opposite) * tickInner, Math.sin(opposite) * tickInner);
         ctx.lineTo(Math.cos(opposite) * tickOuter, Math.sin(opposite) * tickOuter);
-        ctx.lineWidth = isMajor ? 3 : isMid ? 1.9 : 1.1;
+        ctx.lineWidth = isMajor ? 2.1 : isMid ? 1.4 : 0.9;
         ctx.strokeStyle = isMajor ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.38)";
         ctx.stroke();
 
         if (isMajor) {
-          const labelRadius = ringRadius - ringRadius * 0.16;
+          const labelRadius = ringRadius - ringRadius * 0.18;
           drawText(ctx, String(deg), Math.cos(rad) * labelRadius, Math.sin(rad) * labelRadius, {
-            font: `800 ${Math.max(12, ringRadius * 0.085)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+            font: `800 ${Math.max(11, ringRadius * 0.078)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
             fillStyle: "rgba(255,255,255,0.97)"
           });
         }
@@ -988,9 +962,9 @@
       const oppositeRad = angleToCanvasRad(targetDeg + 180);
 
       ctx.beginPath();
-      ctx.moveTo(Math.cos(targetRad) * ringRadius * 0.98, Math.sin(targetRad) * ringRadius * 0.98);
-      ctx.lineTo(Math.cos(oppositeRad) * ringRadius * 0.98, Math.sin(oppositeRad) * ringRadius * 0.98);
-      ctx.lineWidth = Math.max(4, ringRadius * 0.018);
+      ctx.moveTo(Math.cos(targetRad) * ringRadius, Math.sin(targetRad) * ringRadius);
+      ctx.lineTo(Math.cos(oppositeRad) * ringRadius, Math.sin(oppositeRad) * ringRadius);
+      ctx.lineWidth = Math.max(3.2, ringRadius * 0.014);
       ctx.strokeStyle = "rgba(77,163,255,0.98)";
       ctx.stroke();
 
@@ -1000,28 +974,28 @@
       ctx.beginPath();
       ctx.moveTo(-halfLineWidth, 0);
       ctx.lineTo(halfLineWidth, 0);
-      ctx.lineWidth = Math.max(5, ringRadius * 0.022);
+      ctx.lineWidth = Math.max(4.2, ringRadius * 0.018);
       ctx.strokeStyle = "rgba(240,180,41,0.98)";
       ctx.stroke();
 
       ctx.beginPath();
       ctx.moveTo(-ringRadius * 0.16, 0);
       ctx.lineTo(ringRadius * 0.16, 0);
-      ctx.lineWidth = Math.max(8, ringRadius * 0.034);
+      ctx.lineWidth = Math.max(7, ringRadius * 0.03);
       ctx.strokeStyle = "rgba(88,211,141,0.98)";
       ctx.stroke();
 
       ctx.beginPath();
       ctx.moveTo(0, -ringRadius * 0.24);
       ctx.lineTo(0, ringRadius * 0.24);
-      ctx.lineWidth = Math.max(3.5, ringRadius * 0.016);
+      ctx.lineWidth = Math.max(3, ringRadius * 0.013);
       ctx.strokeStyle = "rgba(255,255,255,0.96)";
       ctx.stroke();
 
       ctx.restore();
 
       ctx.beginPath();
-      ctx.arc(0, 0, Math.max(5, ringRadius * 0.026), 0, Math.PI * 2);
+      ctx.arc(0, 0, Math.max(5, ringRadius * 0.024), 0, Math.PI * 2);
       ctx.fillStyle = "rgba(255,255,255,0.98)";
       ctx.fill();
 
@@ -1045,6 +1019,8 @@
         font: `900 ${Math.max(34, Math.round(height * 0.06))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
         fillStyle: "rgba(77,163,255,0.99)"
       });
+
+      return { cx, cy, innerActiveRadius, outerActiveRadius };
     }
 
     function drawOverlay() {
@@ -1071,10 +1047,22 @@
 
     function eventPointToAxisAngle(clientX, clientY) {
       const rect = previewShellEl.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      const dx = clientX - cx;
-      const dy = cy - clientY;
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      const cx = rect.width / 2;
+      const cy = rect.height / 2;
+      const dx = x - cx;
+      const dy = cy - y;
+      const r = Math.sqrt(dx * dx + dy * dy);
+
+      const ringRadius = Math.min(rect.width, rect.height) * 0.33;
+      const innerActiveRadius = ringRadius * 0.72;
+      const outerActiveRadius = ringRadius * 1.03;
+
+      if (r < innerActiveRadius || r > outerActiveRadius) {
+        return null;
+      }
+
       const deg360 = clampAngle360(Math.atan2(dy, dx) * 180 / Math.PI);
       return deg360 > 180 ? deg360 - 180 : deg360;
     }
@@ -1082,7 +1070,9 @@
     function updateAxisFromPointerEvent(event) {
       const point = event.touches?.[0] || event;
       if (!point) return;
-      setTargetAngle(eventPointToAxisAngle(point.clientX, point.clientY));
+      const angle = eventPointToAxisAngle(point.clientX, point.clientY);
+      if (angle === null) return;
+      setTargetAngle(angle);
     }
 
     async function capturePhoto() {
@@ -1204,15 +1194,18 @@
     targetAngleInputEl.addEventListener("click", () => targetAngleInputEl.select());
     targetAngleInputEl.addEventListener("input", () => setTargetAngle(targetAngleInputEl.value));
 
-    targetAngleSliderEl.addEventListener("input", () => setTargetAngle(targetAngleSliderEl.value));
-
     axlInputEl.addEventListener("focus", () => axlInputEl.select());
     axlInputEl.addEventListener("click", () => axlInputEl.select());
 
     previewShellEl.addEventListener("pointerdown", event => {
+      const angle = eventPointToAxisAngle(event.clientX, event.clientY);
+      if (angle === null) {
+        isDraggingAxis = false;
+        return;
+      }
       isDraggingAxis = true;
       previewShellEl.setPointerCapture?.(event.pointerId);
-      updateAxisFromPointerEvent(event);
+      setTargetAngle(angle);
     });
 
     previewShellEl.addEventListener("pointermove", event => {
