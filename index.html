@@ -313,7 +313,7 @@
     <section class="card">
       <div class="badge">Torik IOL Marker</div>
       <h1>Torik IOL Marker</h1>
-      <div class="muted">v1.32 • Gravity tabanlı terazi • Tilt değeri</div>
+      <div class="muted">v1.33 • Gravity + Orientation tabanlı terazi • Tilt değeri</div>
     </section>
 
     <section class="card preview-card">
@@ -399,7 +399,7 @@
         <span>Foto Çek • Paylaş / Kaydet</span>
       </button>
 
-      <div class="status" id="status">Hazır. “İzin Ver ve Başlat” ile kamera ve motion izni birlikte istenir.</div>
+      <div class="status" id="status">Hazır. “İzin Ver ve Başlat” ile kamera ve sensör izni birlikte istenir.</div>
     </section>
   </main>
 
@@ -436,12 +436,14 @@
 
     let motionPermissionGranted = false;
     let motionListening = false;
+    let orientationListening = false;
     let overlayAnimationId = null;
     let isDraggingAxis = false;
 
     let gravityX = 0;
     let gravityY = 0;
     let gravityZ = 0;
+
     let rawRollDeg = 0;
     let zeroOffsetDeg = 0;
     let eventCount = 0;
@@ -456,9 +458,14 @@
     let lastHapticStep = null;
     let lastHapticAt = 0;
 
+    let sensorSource = "none";
+    let lastSensorAt = 0;
+
     const LOW_PASS_ALPHA = 0.16;
+    const ORIENTATION_ALPHA = 0.22;
     const HAPTIC_STEP_DEG = 5;
     const HAPTIC_MIN_INTERVAL_MS = 50;
+    const SENSOR_STALE_MS = 1200;
 
     function setStatus(message) {
       statusEl.textContent = message;
@@ -473,7 +480,7 @@
     function updateDiagnosticStatus(prefix = "") {
       const head = prefix ? `${prefix}\n` : "";
       statusEl.textContent =
-        `${head}gx=${lastGX.toFixed(2)} • gy=${lastGY.toFixed(2)} • gz=${lastGZ.toFixed(2)} • roll=${formatSignedAngle(getCurrentRollDeg())} • events=${eventCount}`;
+        `${head}kaynak=${sensorSource} • gx=${lastGX.toFixed(2)} • gy=${lastGY.toFixed(2)} • gz=${lastGZ.toFixed(2)} • roll=${formatSignedAngle(getCurrentRollDeg())} • events=${eventCount}`;
     }
 
     function pad2(value) {
@@ -502,6 +509,11 @@
 
     function angleToCanvasRad(deg) {
       return (-deg * Math.PI) / 180;
+    }
+
+    function smoothAngleDeg(previous, next, alpha) {
+      const delta = normalizeSigned180(next - previous);
+      return normalizeSigned180(previous + delta * alpha);
     }
 
     function vibratePattern(pattern) {
@@ -651,23 +663,43 @@
       permissionGranted = true;
     }
 
-    async function requestMotionPermissionFromGesture() {
+    async function requestSensorPermissionFromGesture() {
       if (motionPermissionGranted) return;
 
-      if (typeof DeviceMotionEvent === "undefined") {
-        throw new Error("Bu cihazda motion sensörü erişimi yok.");
+      let anySensorSupported = false;
+
+      if (typeof DeviceMotionEvent !== "undefined") {
+        anySensorSupported = true;
+        if (typeof DeviceMotionEvent.requestPermission === "function") {
+          const motionResult = await DeviceMotionEvent.requestPermission();
+          if (motionResult !== "granted") {
+            throw new Error("Motion izni verilmedi.");
+          }
+        }
       }
 
-      if (typeof DeviceMotionEvent.requestPermission === "function") {
-        const result = await DeviceMotionEvent.requestPermission();
-        if (result !== "granted") {
-          throw new Error("Motion izni verilmedi.");
+      if (typeof DeviceOrientationEvent !== "undefined") {
+        anySensorSupported = true;
+        if (typeof DeviceOrientationEvent.requestPermission === "function") {
+          const orientationResult = await DeviceOrientationEvent.requestPermission();
+          if (orientationResult !== "granted") {
+            throw new Error("Orientation izni verilmedi.");
+          }
         }
+      }
+
+      if (!anySensorSupported) {
+        throw new Error("Bu cihazda motion/orientation sensörü yok.");
       }
 
       if (!motionListening) {
         window.addEventListener("devicemotion", handleDeviceMotion, true);
         motionListening = true;
+      }
+
+      if (!orientationListening) {
+        window.addEventListener("deviceorientation", handleDeviceOrientation, true);
+        orientationListening = true;
       }
 
       motionPermissionGranted = true;
@@ -789,7 +821,28 @@
         gy = -y;
       }
 
-      return Math.atan2(gx, gy) * 180 / Math.PI;
+      return Math.atan2(gx, -gy) * 180 / Math.PI;
+    }
+
+    function computeRollFromOrientation(beta, gamma) {
+      const screenAngle = getScreenAngle();
+
+      if (screenAngle === 90) {
+        return beta;
+      }
+      if (screenAngle === -90 || screenAngle === 270) {
+        return -beta;
+      }
+      if (screenAngle === 180) {
+        return -gamma;
+      }
+      return gamma;
+    }
+
+    function markSensorAlive(source) {
+      sensorSource = source;
+      lastSensorAt = Date.now();
+      eventCount += 1;
     }
 
     function handleDeviceMotion(event) {
@@ -804,8 +857,32 @@
       gravityY += LOW_PASS_ALPHA * (lastGY - gravityY);
       gravityZ += LOW_PASS_ALPHA * (lastGZ - gravityZ);
 
-      rawRollDeg = computeRollFromGravity(gravityX, gravityY);
-      eventCount += 1;
+      const magnitude = Math.abs(gravityX) + Math.abs(gravityY) + Math.abs(gravityZ);
+      if (magnitude < 0.2) return;
+
+      const motionRoll = computeRollFromGravity(gravityX, gravityY);
+      const orientationFresh = sensorSource === "orientation" && Date.now() - lastSensorAt < SENSOR_STALE_MS;
+
+      if (!orientationFresh) {
+        rawRollDeg = smoothAngleDeg(rawRollDeg, motionRoll, ORIENTATION_ALPHA);
+        markSensorAlive("motion");
+      }
+
+      if (calibrationRunning) {
+        calibrationSamples.push(rawRollDeg);
+      }
+
+      if (!calibrationRunning && eventCount % 5 === 0) {
+        updateDiagnosticStatus();
+      }
+    }
+
+    function handleDeviceOrientation(event) {
+      if (!Number.isFinite(event.beta) || !Number.isFinite(event.gamma)) return;
+
+      const orientationRoll = computeRollFromOrientation(event.beta, event.gamma);
+      rawRollDeg = smoothAngleDeg(rawRollDeg, orientationRoll, ORIENTATION_ALPHA);
+      markSensorAlive("orientation");
 
       if (calibrationRunning) {
         calibrationSamples.push(rawRollDeg);
@@ -829,7 +906,7 @@
       if (calibrationSamples.length < 5) {
         calibrationRunning = false;
         updateUiState();
-        throw new Error("Yeterli motion verisi alınamadı.");
+        throw new Error("Yeterli sensör verisi alınamadı.");
       }
 
       zeroOffsetDeg = calibrationSamples.reduce((sum, value) => sum + value, 0) / calibrationSamples.length;
@@ -1152,16 +1229,16 @@
       try {
         await requestCameraPermission();
         try {
-          await requestMotionPermissionFromGesture();
+          await requestSensorPermissionFromGesture();
         } catch (sensorError) {
-          setStatus(`Kamera izni verildi.\nMotion izni alınamadı: ${sensorError.message}`);
+          setStatus(`Kamera izni verildi.\nSensör izni alınamadı: ${sensorError.message}`);
         }
         await populateDevices();
         await startSelectedCamera();
         updateUiState();
 
         if (motionPermissionGranted) {
-          updateDiagnosticStatus("Kamera ve gravity sensörü hazır.");
+          updateDiagnosticStatus("Kamera ve sensör hazır.");
         }
       } catch (error) {
         setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
@@ -1256,6 +1333,9 @@
       cleanupStream();
       if (motionListening) {
         window.removeEventListener("devicemotion", handleDeviceMotion, true);
+      }
+      if (orientationListening) {
+        window.removeEventListener("deviceorientation", handleDeviceOrientation, true);
       }
       if (overlayAnimationId !== null) {
         cancelAnimationFrame(overlayAnimationId);
