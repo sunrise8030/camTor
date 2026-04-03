@@ -16,13 +16,18 @@
       --warning: #f0b429;
     }
 
+    html {
+      -webkit-text-size-adjust: 100%;
+    }
+
     * {
       box-sizing: border-box;
       -webkit-tap-highlight-color: transparent;
       min-width: 0;
     }
 
-    html, body {
+    html,
+    body {
       margin: 0;
       width: 100%;
       height: 100%;
@@ -43,7 +48,7 @@
     .app {
       height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px);
       display: grid;
-      grid-template-rows: auto minmax(0, 1fr) auto;
+      grid-template-rows: auto minmax(0, 56dvh) minmax(0, 1fr);
       gap: 8px;
       overflow: hidden;
     }
@@ -90,6 +95,7 @@
     .preview-card {
       padding: 8px;
       min-height: 0;
+      overflow: hidden;
       display: grid;
     }
 
@@ -151,9 +157,21 @@
       min-height: 0;
     }
 
-    .grid-5 {
+    .form-grid {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .span-2 { grid-column: span 2; }
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+    .span-5 { grid-column: span 5; }
+    .span-6 { grid-column: span 6; }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
       gap: 6px;
     }
 
@@ -162,6 +180,7 @@
       gap: 3px;
       color: var(--muted);
       font-size: 11px;
+      min-width: 0;
     }
 
     input,
@@ -174,7 +193,7 @@
       background: #0f141b;
       color: var(--text);
       padding: 0 10px;
-      font-size: 14px;
+      font-size: 16px;
     }
 
     input[type="number"] {
@@ -264,36 +283,54 @@
       text-align: right;
     }
 
-    .inline-dual {
+    .compact-refractive {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 6px;
-      min-height: 42px;
+      min-width: 0;
     }
 
-    .mini-field {
+    .compact-cell {
       display: grid;
       grid-template-rows: auto auto;
       gap: 3px;
       min-width: 0;
     }
 
-    .mini-label {
+    .compact-label {
       font-size: 10px;
       color: var(--muted);
       line-height: 1;
       padding-left: 2px;
+      white-space: nowrap;
     }
 
-    .mini-field input {
+    .compact-cell input {
       min-height: 42px;
       padding: 0 8px;
-      font-size: 13px;
+      font-size: 16px;
+      min-width: 0;
     }
 
     @media (max-width: 980px) {
-      .grid-5 {
+      .app {
+        grid-template-rows: auto minmax(0, 52dvh) minmax(0, 1fr);
+      }
+
+      .form-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .span-2,
+      .span-3,
+      .span-4,
+      .span-5,
+      .span-6 {
+        grid-column: span 1;
+      }
+
+      .span-mobile-2 {
+        grid-column: span 2;
       }
     }
   </style>
@@ -304,7 +341,7 @@
       <div>
         <div class="badge">Torik IOL Marker</div>
         <h1>Torik IOL Marker</h1>
-        <div class="muted">v1.24 • Gravity tabanlı • Cyl / Axl eklendi • Tactile guidance güncellendi</div>
+        <div class="muted">v1.25 • Safari zoom dayanıklı • Sph Cyl Axl kompakt</div>
       </div>
     </section>
 
@@ -321,37 +358,36 @@
     </section>
 
     <section class="card controls">
-      <div class="grid-5">
-        <label class="field">
+      <div class="form-grid">
+        <label class="field span-3 span-mobile-2">
           İsim
           <input id="patientNameInput" type="text" placeholder="Örn: Ahmet Yılmaz" />
         </label>
 
-        <label class="field">
+        <label class="field span-2">
           IOL Tipi
-          <input id="iolTypeInput" type="text" placeholder="Örn: Torik IOL" />
+          <input id="iolTypeInput" type="text" placeholder="Torik IOL" />
         </label>
 
-        <label class="field">
-          Sferik Diyoptri
-          <input id="diopterInput" type="text" placeholder="Örn: 22.5D" />
-        </label>
-
-        <label class="field">
-          Cyl / Axl
-          <div class="inline-dual">
-            <div class="mini-field">
-              <span class="mini-label">Cyl</span>
+        <label class="field span-4 span-mobile-2">
+          Refraksiyon
+          <div class="compact-refractive">
+            <div class="compact-cell">
+              <span class="compact-label">Sph</span>
+              <input id="sphInput" type="text" placeholder="22.5" />
+            </div>
+            <div class="compact-cell">
+              <span class="compact-label">Cyl</span>
               <input id="cylInput" type="text" placeholder="-1.25" />
             </div>
-            <div class="mini-field">
-              <span class="mini-label">Axl</span>
+            <div class="compact-cell">
+              <span class="compact-label">Axl</span>
               <input id="axlInput" type="number" min="0" max="180" step="1" placeholder="63" />
             </div>
           </div>
         </label>
 
-        <label class="field">
+        <label class="field span-3 span-mobile-2">
           Hedef Açı
           <input id="targetAngleInput" type="number" min="0" max="180" step="1" value="63" />
         </label>
@@ -365,7 +401,7 @@
         </div>
       </label>
 
-      <div class="grid-5">
+      <div class="action-grid">
         <label class="field">
           Kamera
           <select id="videoDevice"></select>
@@ -412,7 +448,7 @@
 
     const patientNameInputEl = document.getElementById("patientNameInput");
     const iolTypeInputEl = document.getElementById("iolTypeInput");
-    const diopterInputEl = document.getElementById("diopterInput");
+    const sphInputEl = document.getElementById("sphInput");
     const cylInputEl = document.getElementById("cylInput");
     const axlInputEl = document.getElementById("axlInput");
     const targetAngleInputEl = document.getElementById("targetAngleInput");
@@ -444,7 +480,6 @@
 
     let gravityX = 0;
     let gravityY = 0;
-    let gravityZ = 0;
     let filteredRollDeg = 0;
     let zeroOffsetDeg = 0;
 
@@ -491,18 +526,14 @@
     }
 
     function vibratePattern(pattern) {
-      if (navigator.vibrate) {
-        navigator.vibrate(pattern);
-      }
+      if (navigator.vibrate) navigator.vibrate(pattern);
     }
 
     function maybeHapticOnAngle(angle) {
       const snapped = Math.round(angle / HAPTIC_STEP_DEG) * HAPTIC_STEP_DEG;
       const now = Date.now();
 
-      if (snapped === lastHapticStep && now - lastHapticAt < HAPTIC_MIN_INTERVAL_MS) {
-        return;
-      }
+      if (snapped === lastHapticStep && now - lastHapticAt < HAPTIC_MIN_INTERVAL_MS) return;
 
       if (snapped !== lastHapticStep) {
         if (snapped === 0 || snapped === 90 || snapped === 180) {
@@ -560,11 +591,11 @@
     function getOutputBaseName() {
       const name = sanitizePart(patientNameInputEl.value, "hasta");
       const iol = sanitizePart(iolTypeInputEl.value, "Torik_IOL");
-      const diopter = sanitizePart(diopterInputEl.value, "xD");
+      const sph = sanitizePart(sphInputEl.value, "xSph");
       const cyl = sanitizePart(cylInputEl.value, "xCyl");
       const axl = normalizeAngleValue(axlInputEl.value || 0);
       const angle = normalizeAngleValue(targetAngleInputEl.value || 63);
-      return `${name}_${iol}_${diopter}_${cyl}_${axl}axl_${angle}deg`;
+      return `${name}_${iol}_${sph}_${cyl}_${axl}axl_${angle}deg`;
     }
 
     function updateTorchUi() {
@@ -574,7 +605,6 @@
         torchBtnEl.disabled = true;
         return;
       }
-
       torchLabelEl.textContent = torchEnabled ? "Torch Kapat" : "Torch Aç";
       torchIconEl.textContent = torchEnabled ? "🔦" : "💡";
       torchBtnEl.disabled = !currentTrack;
@@ -611,10 +641,7 @@
       if (navigator.share && navigator.canShare) {
         try {
           if (navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: file.name
-            });
+            await navigator.share({ files: [file], title: file.name });
             return "shared";
           }
         } catch (error) {
@@ -678,9 +705,7 @@
 
       videoDeviceEl.innerHTML = "";
 
-      if (!videoInputs.length) {
-        throw new Error("Kamera bulunamadı.");
-      }
+      if (!videoInputs.length) throw new Error("Kamera bulunamadı.");
 
       for (const device of videoInputs) {
         const option = document.createElement("option");
@@ -772,12 +797,8 @@
     }
 
     function getScreenAngle() {
-      if (screen.orientation && typeof screen.orientation.angle === "number") {
-        return screen.orientation.angle;
-      }
-      if (typeof window.orientation === "number") {
-        return window.orientation;
-      }
+      if (screen.orientation && typeof screen.orientation.angle === "number") return screen.orientation.angle;
+      if (typeof window.orientation === "number") return window.orientation;
       return 0;
     }
 
@@ -806,17 +827,13 @@
 
       const x = Number.isFinite(g.x) ? g.x : 0;
       const y = Number.isFinite(g.y) ? g.y : 0;
-      const z = Number.isFinite(g.z) ? g.z : 0;
 
       gravityX = gravityX + LOW_PASS_ALPHA * (x - gravityX);
       gravityY = gravityY + LOW_PASS_ALPHA * (y - gravityY);
-      gravityZ = gravityZ + LOW_PASS_ALPHA * (z - gravityZ);
 
       filteredRollDeg = computeRollFromGravity(gravityX, gravityY);
 
-      if (calibrationRunning) {
-        calibrationSamples.push(filteredRollDeg);
-      }
+      if (calibrationRunning) calibrationSamples.push(filteredRollDeg);
     }
 
     async function runCalibration() {
@@ -835,8 +852,7 @@
         throw new Error("Yeterli motion verisi alınamadı.");
       }
 
-      const avg = calibrationSamples.reduce((sum, value) => sum + value, 0) / calibrationSamples.length;
-      zeroOffsetDeg = avg;
+      zeroOffsetDeg = calibrationSamples.reduce((sum, value) => sum + value, 0) / calibrationSamples.length;
       calibrationRunning = false;
       updateUiState();
       drawOverlay();
@@ -884,7 +900,7 @@
       const lines = [
         `İsim: ${patientNameInputEl.value.trim() || "-"}`,
         `IOL: ${iolTypeInputEl.value.trim() || "-"}`,
-        `Sferik D: ${diopterInputEl.value.trim() || "-"}`,
+        `Sph: ${sphInputEl.value.trim() || "-"}`,
         `Cyl: ${cylInputEl.value.trim() || "-"}`,
         `Axl: ${String(clampAxis180(axlInputEl.value || 0)).padStart(3, "0")}°`,
         `Hedef: ${String(target).padStart(3, "0")}°`,
@@ -1043,9 +1059,7 @@
     }
 
     function startOverlayLoop() {
-      if (overlayAnimationId !== null) {
-        cancelAnimationFrame(overlayAnimationId);
-      }
+      if (overlayAnimationId !== null) cancelAnimationFrame(overlayAnimationId);
 
       const loop = () => {
         drawOverlay();
@@ -1139,9 +1153,7 @@
         await populateDevices();
         await startSelectedCamera();
         updateUiState();
-        if (motionPermissionGranted) {
-          setStatus("Kamera ve gravity motion hazır.");
-        }
+        if (motionPermissionGranted) setStatus("Kamera ve gravity motion hazır.");
       } catch (error) {
         setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
       }
@@ -1188,29 +1200,14 @@
       }
     });
 
-    targetAngleInputEl.addEventListener("focus", () => {
-      targetAngleInputEl.select();
-    });
+    targetAngleInputEl.addEventListener("focus", () => targetAngleInputEl.select());
+    targetAngleInputEl.addEventListener("click", () => targetAngleInputEl.select());
+    targetAngleInputEl.addEventListener("input", () => setTargetAngle(targetAngleInputEl.value));
 
-    targetAngleInputEl.addEventListener("click", () => {
-      targetAngleInputEl.select();
-    });
+    targetAngleSliderEl.addEventListener("input", () => setTargetAngle(targetAngleSliderEl.value));
 
-    targetAngleInputEl.addEventListener("input", () => {
-      setTargetAngle(targetAngleInputEl.value);
-    });
-
-    targetAngleSliderEl.addEventListener("input", () => {
-      setTargetAngle(targetAngleSliderEl.value);
-    });
-
-    axlInputEl.addEventListener("focus", () => {
-      axlInputEl.select();
-    });
-
-    axlInputEl.addEventListener("click", () => {
-      axlInputEl.select();
-    });
+    axlInputEl.addEventListener("focus", () => axlInputEl.select());
+    axlInputEl.addEventListener("click", () => axlInputEl.select());
 
     previewShellEl.addEventListener("pointerdown", event => {
       isDraggingAxis = true;
@@ -1245,12 +1242,8 @@
 
     window.addEventListener("beforeunload", () => {
       cleanupStream();
-      if (motionListening) {
-        window.removeEventListener("devicemotion", handleDeviceMotion, true);
-      }
-      if (overlayAnimationId !== null) {
-        cancelAnimationFrame(overlayAnimationId);
-      }
+      if (motionListening) window.removeEventListener("devicemotion", handleDeviceMotion, true);
+      if (overlayAnimationId !== null) cancelAnimationFrame(overlayAnimationId);
     });
 
     setTargetAngle(63);
