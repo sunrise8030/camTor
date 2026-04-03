@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
   <title>IOL Marking Capture</title>
   <style>
     :root {
@@ -13,7 +13,6 @@
       --border: #2a3140;
       --text: #edf2f7;
       --muted: #a6b0c0;
-      --accent: #4da3ff;
       --success: #58d38d;
       --danger: #ff6b6b;
       --warning: #f0b429;
@@ -22,90 +21,87 @@
     * {
       box-sizing: border-box;
       -webkit-tap-highlight-color: transparent;
+      min-width: 0;
     }
 
     html, body {
       margin: 0;
-      min-height: 100%;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
       background: var(--bg);
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Arial, sans-serif;
-      overflow-x: hidden;
-      overflow-y: auto;
     }
 
     body {
       padding:
-        max(10px, env(safe-area-inset-top))
-        10px
-        max(16px, env(safe-area-inset-bottom))
-        10px;
+        max(8px, env(safe-area-inset-top))
+        8px
+        max(8px, env(safe-area-inset-bottom))
+        8px;
     }
 
     .app {
+      height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px);
       display: grid;
-      grid-template-rows: auto auto auto;
-      gap: 10px;
-      min-height: calc(100vh - 20px);
+      grid-template-rows: auto minmax(0, 55dvh) minmax(0, 1fr);
+      gap: 8px;
+      overflow: hidden;
     }
 
     .card {
       background: var(--panel);
       border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 12px;
+      border-radius: 16px;
+      padding: 10px;
       min-height: 0;
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
     }
 
     .topbar {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .title-wrap {
-      display: grid;
-      gap: 4px;
+      justify-content: space-between;
+      gap: 8px;
     }
 
     .badge {
       display: inline-block;
       width: fit-content;
-      padding: 4px 10px;
+      padding: 3px 8px;
       border-radius: 999px;
       border: 1px solid var(--border);
       background: #111827;
       color: var(--muted);
-      font-size: 12px;
+      font-size: 11px;
+      margin-bottom: 4px;
     }
 
     h1 {
       margin: 0;
-      font-size: 22px;
+      font-size: 18px;
       line-height: 1.1;
     }
 
     .muted {
       color: var(--muted);
-      font-size: 12px;
+      font-size: 11px;
     }
 
     .preview-card {
-      padding: 8px;
       display: grid;
-      grid-template-rows: auto auto;
+      grid-template-rows: 1fr auto;
       gap: 8px;
+      padding: 8px;
+      min-height: 0;
     }
 
     .preview-shell {
       position: relative;
-      min-height: 58vh;
-      height: min(72vh, 980px);
+      min-height: 0;
       border: 1px solid var(--border);
-      border-radius: 18px;
+      border-radius: 16px;
       overflow: hidden;
       background: #000;
     }
@@ -126,11 +122,6 @@
       z-index: 1;
     }
 
-    #overlayCanvas {
-      z-index: 3;
-      pointer-events: none;
-    }
-
     .screen-light-overlay {
       z-index: 2;
       pointer-events: none;
@@ -138,11 +129,16 @@
       mix-blend-mode: screen;
     }
 
+    #overlayCanvas {
+      z-index: 3;
+      pointer-events: none;
+    }
+
     .preview-head {
       position: absolute;
-      top: 10px;
-      left: 10px;
-      right: 10px;
+      top: 8px;
+      left: 8px;
+      right: 8px;
       display: flex;
       justify-content: space-between;
       gap: 8px;
@@ -152,8 +148,8 @@
 
     .pill {
       border-radius: 999px;
-      padding: 6px 10px;
-      font-size: 12px;
+      padding: 5px 8px;
+      font-size: 11px;
       background: rgba(10, 12, 16, 0.78);
       border: 1px solid rgba(255,255,255,0.12);
       backdrop-filter: blur(10px);
@@ -162,67 +158,71 @@
     .preview-footer {
       display: grid;
       grid-template-columns: repeat(6, minmax(0, 1fr));
-      gap: 8px;
+      gap: 6px;
     }
 
     .meta {
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 10px;
       background: var(--panel-2);
-      padding: 8px;
-      min-height: 54px;
+      padding: 6px 7px;
+      min-height: 48px;
     }
 
     .meta-label {
-      font-size: 10px;
+      font-size: 9px;
       color: var(--muted);
       margin-bottom: 2px;
     }
 
     .meta-value {
-      font-size: 12px;
+      font-size: 11px;
       line-height: 1.2;
       word-break: break-word;
     }
 
-    .form-card {
+    .controls {
       display: grid;
-      gap: 10px;
+      grid-template-rows: auto auto auto auto;
+      gap: 8px;
+      min-height: 0;
     }
 
     .grid-2,
     .grid-3,
     .grid-4,
-    .grid-5 {
+    .grid-5,
+    .grid-6 {
       display: grid;
-      gap: 8px;
+      gap: 6px;
     }
 
     .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .grid-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 
     label.field {
       display: grid;
-      gap: 4px;
+      gap: 3px;
       color: var(--muted);
-      font-size: 12px;
+      font-size: 11px;
     }
 
     input, select, button {
-      min-height: 46px;
       width: 100%;
-      border-radius: 14px;
+      min-height: 40px;
+      border-radius: 12px;
       border: 1px solid var(--border);
       background: #0f141b;
       color: var(--text);
-      padding: 0 12px;
-      font-size: 14px;
+      padding: 0 10px;
+      font-size: 13px;
     }
 
     input[type="range"] {
-      min-height: 38px;
+      min-height: 28px;
       padding: 0;
       background: transparent;
       border: none;
@@ -243,7 +243,7 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
+      gap: 8px;
       cursor: pointer;
       font-weight: 600;
       background:
@@ -253,7 +253,7 @@
         inset 0 1px 0 rgba(255,255,255,0.08),
         inset 0 -1px 0 rgba(0,0,0,0.25),
         0 1px 1px rgba(0,0,0,0.35),
-        0 8px 18px rgba(0,0,0,0.16);
+        0 8px 18px rgba(0,0,0,0.12);
     }
 
     button:disabled,
@@ -264,7 +264,7 @@
     }
 
     .btn-icon {
-      font-size: 22px;
+      font-size: 18px;
       line-height: 1;
       flex: 0 0 auto;
     }
@@ -275,13 +275,13 @@
 
     .status {
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 12px;
       background: var(--panel-2);
-      padding: 10px 12px;
+      padding: 8px 10px;
       color: var(--muted);
-      font-size: 13px;
+      font-size: 12px;
       white-space: pre-wrap;
-      min-height: 72px;
+      min-height: 58px;
     }
 
     .recording {
@@ -291,46 +291,42 @@
         inset 0 1px 0 rgba(255,255,255,0.08);
     }
 
-    .hint {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
     .range-wrap {
       display: grid;
-      gap: 4px;
+      gap: 2px;
     }
 
     .range-line {
       display: grid;
       grid-template-columns: 1fr auto;
-      gap: 8px;
+      gap: 6px;
       align-items: center;
     }
 
     .range-value {
-      font-size: 12px;
+      font-size: 11px;
       color: var(--text);
-      min-width: 40px;
+      min-width: 38px;
       text-align: right;
     }
 
-    @media (max-width: 980px) {
+    .hint {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    @media (max-width: 900px) {
       .preview-footer,
       .grid-2,
       .grid-3,
       .grid-4,
-      .grid-5 {
+      .grid-5,
+      .grid-6 {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .preview-shell {
-        min-height: 50vh;
-        height: 58vh;
-      }
-
-      h1 {
-        font-size: 19px;
+      .app {
+        grid-template-rows: auto minmax(0, 52dvh) minmax(0, 1fr);
       }
     }
   </style>
@@ -338,10 +334,10 @@
 <body>
   <main class="app">
     <section class="card topbar">
-      <div class="title-wrap">
+      <div>
         <div class="badge">IOL Capture iPhone</div>
-        <h1>Toric Marking Overlay • 360° gönye + 180° terazi</h1>
-        <div class="muted">v1.16 • Scroll düzeltildi • Işık slider eklendi</div>
+        <h1>Toric Marking Overlay</h1>
+        <div class="muted">v1.17 • Scroll yok • Açı sistemi düzeltildi</div>
       </div>
     </section>
 
@@ -368,7 +364,7 @@
         </div>
         <div class="meta">
           <div class="meta-label">Torch</div>
-          <div class="meta-value" id="torchInfo">Destek bilinmiyor</div>
+          <div class="meta-value" id="torchInfo">-</div>
         </div>
         <div class="meta">
           <div class="meta-label">Süre</div>
@@ -380,13 +376,13 @@
         </div>
         <div class="meta">
           <div class="meta-label">Hedef / Fark</div>
-          <div class="meta-value" id="angleInfo">-</div>
+          <div class="meta-value" id="angleInfo">090° / -</div>
         </div>
       </div>
     </section>
 
-    <section class="card form-card">
-      <div class="grid-2">
+    <section class="card controls">
+      <div class="grid-4">
         <label class="field">
           İsim
           <input id="patientNameInput" type="text" placeholder="Örn: Ahmet Yılmaz" />
@@ -396,9 +392,7 @@
           IOL Tipi
           <input id="iolTypeInput" type="text" placeholder="Örn: AcrySof Toric" />
         </label>
-      </div>
 
-      <div class="grid-5">
         <label class="field">
           Diyoptri
           <input id="diopterInput" type="text" placeholder="Örn: 22.5D" />
@@ -406,9 +400,11 @@
 
         <label class="field">
           Hedef Açı
-          <input id="targetAngleInput" type="number" min="0" max="359" step="1" placeholder="Örn: 87" value="90" />
+          <input id="targetAngleInput" type="number" min="0" max="359" step="1" value="90" />
         </label>
+      </div>
 
+      <div class="grid-6">
         <label class="field">
           Kamera
           <select id="videoDevice"></select>
@@ -422,16 +418,6 @@
           </button>
         </label>
 
-        <label class="field">
-          Sensör
-          <button id="sensorBtn" type="button" class="warning">
-            <span class="btn-icon">🧭</span>
-            <span id="sensorBtnLabel">Sensör İzni</span>
-          </button>
-        </label>
-      </div>
-
-      <div class="grid-5">
         <label class="field">
           Ekran Işığı
           <div class="range-wrap">
@@ -456,14 +442,14 @@
           <span class="btn-icon" id="captureBtnIcon">📸</span>
           <span id="captureBtnLabel">Foto Çek ve Kaydet</span>
         </button>
+      </div>
 
+      <div class="grid-5">
         <button id="calibrateBtn" type="button" class="warning" disabled>
           <span class="btn-icon">📐</span>
           <span>0° Kalibre Et</span>
         </button>
-      </div>
 
-      <div class="grid-3">
         <button id="refreshBtn" type="button" disabled>
           <span class="btn-icon">🔄</span>
           <span>Yenile</span>
@@ -474,14 +460,19 @@
           <span>Işığı Sıfırla</span>
         </button>
 
-        <button id="resetAngleBtn" type="button">
-          <span class="btn-icon">🎯</span>
-          <span>Açıyı 90° Yap</span>
+        <button id="angle90Btn" type="button">
+          <span class="btn-icon">↟</span>
+          <span>90°</span>
+        </button>
+
+        <button id="angle0Btn" type="button">
+          <span class="btn-icon">→</span>
+          <span>0°</span>
         </button>
       </div>
 
-      <div class="status" id="status">Hazır. Önce kamera izni ver. Overlay için sensör izni de ver.</div>
-      <div class="hint">Not: Web tarafında gerçek iPhone torch gücü genelde slider ile kontrol edilemez. Bu slider ekran üstü aydınlatma katmanını yönetir. Torch destek varsa ayrıca aç/kapat çalışır.</div>
+      <div class="status" id="status">Hazır. “İzin Ver ve Başlat” ile kamera ve sensör izni birlikte istenir.</div>
+      <div class="hint">Sensör izni sayfa açılır açılmaz otomatik alınamaz; iPhone/Safari bunu kullanıcı etkileşimi içinden ister.  [oai_citation:2‡MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/API/Device_orientation_events?utm_source=chatgpt.com)</div>
     </section>
   </main>
 
@@ -510,14 +501,12 @@
     const torchIconEl = document.getElementById("torchIcon");
     const torchLabelEl = document.getElementById("torchLabel");
 
-    const sensorBtnEl = document.getElementById("sensorBtn");
-    const sensorBtnLabelEl = document.getElementById("sensorBtnLabel");
     const calibrateBtnEl = document.getElementById("calibrateBtn");
-
     const screenLightSliderEl = document.getElementById("screenLightSlider");
     const screenLightValueEl = document.getElementById("screenLightValue");
     const resetLightBtnEl = document.getElementById("resetLightBtn");
-    const resetAngleBtnEl = document.getElementById("resetAngleBtn");
+    const angle90BtnEl = document.getElementById("angle90Btn");
+    const angle0BtnEl = document.getElementById("angle0Btn");
 
     const statusEl = document.getElementById("status");
     const deviceInfoEl = document.getElementById("deviceInfo");
@@ -548,7 +537,6 @@
     let currentRoll = 0;
     let zeroOffset = 0;
     let overlayAnimationId = null;
-
     let screenLightPercent = 0;
 
     function setStatus(message) {
@@ -576,9 +564,13 @@
       return `${rounded > 0 ? "+" : ""}${rounded.toFixed(1)}°`;
     }
 
+    function angleToCanvasRad(deg) {
+      return (-deg * Math.PI) / 180;
+    }
+
     function getTargetAngle() {
       const raw = Number(targetAngleInputEl.value);
-      if (!Number.isFinite(raw)) return 0;
+      if (!Number.isFinite(raw)) return 90;
       return clampAngle360(Math.round(raw));
     }
 
@@ -608,7 +600,7 @@
       const name = sanitizePart(patientNameInputEl.value, "hasta");
       const iol = sanitizePart(iolTypeInputEl.value, "IOL");
       const diopter = sanitizePart(diopterInputEl.value, "xD");
-      const angle = normalizeAngleValue(targetAngleInputEl.value) || "000";
+      const angle = normalizeAngleValue(targetAngleInputEl.value) || "090";
       return `${name}_${iol}_${diopter}_${angle}deg`;
     }
 
@@ -641,14 +633,9 @@
       torchBtnEl.disabled = !currentTrack;
     }
 
-    function updateSensorUi() {
-      sensorBtnLabelEl.textContent = sensorPermissionGranted ? "Sensör Hazır" : "Sensör İzni";
-      calibrateBtnEl.disabled = !sensorPermissionGranted;
-    }
-
     function updateScreenLightUi() {
       screenLightValueEl.textContent = `${screenLightPercent}%`;
-      const alpha = Math.min(0.65, screenLightPercent / 100 * 0.65);
+      const alpha = Math.min(0.65, (screenLightPercent / 100) * 0.65);
       screenLightOverlayEl.style.background = `rgba(255,255,255,${alpha})`;
     }
 
@@ -661,11 +648,11 @@
       videoDeviceEl.disabled = !permissionGranted || isRecording;
       modeToggleBtnEl.disabled = isRecording;
       grantBtnEl.disabled = permissionGranted && hasStream;
+      calibrateBtnEl.disabled = !sensorPermissionGranted;
 
       streamPillEl.textContent = hasStream ? "Canlı" : "Kapalı";
       updateModeUi();
       updateTorchUi();
-      updateSensorUi();
       updateScreenLightUi();
     }
 
@@ -755,7 +742,7 @@
       setTimeout(() => URL.revokeObjectURL(url), 2000);
     }
 
-    async function requestPermission() {
+    async function requestCameraPermission() {
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error("Tarayıcı kamera erişimini desteklemiyor.");
       }
@@ -768,6 +755,28 @@
       tempStream.getTracks().forEach(track => track.stop());
       permissionGranted = true;
       selectedRecordingMimeType = pickSupportedVideoMimeType();
+    }
+
+    async function requestSensorPermissionFromGesture() {
+      if (sensorPermissionGranted) return;
+
+      if (typeof DeviceOrientationEvent === "undefined") {
+        throw new Error("Bu cihazda orientation sensörü erişimi yok.");
+      }
+
+      if (typeof DeviceOrientationEvent.requestPermission === "function") {
+        const result = await DeviceOrientationEvent.requestPermission();
+        if (result !== "granted") {
+          throw new Error("Sensör izni verilmedi.");
+        }
+      }
+
+      if (!sensorListening) {
+        window.addEventListener("deviceorientation", handleOrientation, true);
+        sensorListening = true;
+      }
+
+      sensorPermissionGranted = true;
     }
 
     async function populateDevices() {
@@ -901,7 +910,7 @@
       ctx.drawImage(videoEl, 0, 0, width, height);
 
       if (screenLightPercent > 0) {
-        const alpha = Math.min(0.65, screenLightPercent / 100 * 0.65);
+        const alpha = Math.min(0.65, (screenLightPercent / 100) * 0.65);
         ctx.fillStyle = `rgba(255,255,255,${alpha})`;
         ctx.fillRect(0, 0, width, height);
       }
@@ -910,15 +919,7 @@
       overlayRendered.width = width;
       overlayRendered.height = height;
       const overlayRenderedCtx = overlayRendered.getContext("2d");
-
-      drawOverlayOnContext(
-        overlayRenderedCtx,
-        width,
-        height,
-        getCalibratedRoll(),
-        getTargetAngle()
-      );
-
+      drawOverlayOnContext(overlayRenderedCtx, width, height, getCalibratedRoll(), getTargetAngle());
       ctx.drawImage(overlayRendered, 0, 0, width, height);
 
       const blob = await new Promise((resolve, reject) => {
@@ -1031,50 +1032,18 @@
         case 180:
           roll = -gamma;
           break;
-        case 0:
         default:
           roll = gamma;
           break;
       }
 
-      if (!Number.isFinite(roll)) {
-        return 0;
-      }
-
+      if (!Number.isFinite(roll)) return 0;
       return Math.max(-180, Math.min(180, roll));
     }
 
     function handleOrientation(event) {
       currentRoll = computeRollFromOrientation(event);
       updateAngleReadout();
-    }
-
-    async function requestSensorPermission() {
-      if (sensorPermissionGranted) {
-        setStatus("Sensör zaten hazır.");
-        return;
-      }
-
-      if (typeof DeviceOrientationEvent === "undefined") {
-        throw new Error("Bu cihazda orientation sensörü erişimi yok.");
-      }
-
-      if (typeof DeviceOrientationEvent.requestPermission === "function") {
-        const result = await DeviceOrientationEvent.requestPermission();
-        if (result !== "granted") {
-          throw new Error("Sensör izni verilmedi.");
-        }
-      }
-
-      if (!sensorListening) {
-        window.addEventListener("deviceorientation", handleOrientation, true);
-        sensorListening = true;
-      }
-
-      sensorPermissionGranted = true;
-      updateSensorUi();
-      updateAngleReadout();
-      setStatus("Sensör izni verildi. İstersen 0° kalibre et.");
     }
 
     function getCalibratedRoll() {
@@ -1096,7 +1065,7 @@
       zeroOffset = currentRoll;
       updateAngleReadout();
       drawOverlay();
-      setStatus(`0° kalibrasyon yapıldı.\nReferans roll: ${formatSignedAngle(zeroOffset)}`);
+      setStatus(`0° kalibrasyon yapıldı.\nReferans tilt: ${formatSignedAngle(zeroOffset)}`);
     }
 
     function resizeOverlayCanvas() {
@@ -1143,9 +1112,6 @@
       const radius = Math.min(width, height) * 0.33;
       const ringRadius = radius;
       const halfLineWidth = radius * 1.18;
-      const horizonRotation = (rollDeg * Math.PI) / 180;
-      const targetRotation = ((targetDeg - 90) * Math.PI) / 180;
-      const oppositeRotation = ((targetDeg + 180 - 90) * Math.PI) / 180;
 
       ctx.save();
       ctx.translate(cx, cy);
@@ -1157,7 +1123,7 @@
       ctx.stroke();
 
       for (let deg = 0; deg < 360; deg += 5) {
-        const rad = ((deg - 90) * Math.PI) / 180;
+        const rad = angleToCanvasRad(deg);
         const isMajor = deg % 30 === 0;
         const isMid = deg % 10 === 0;
         const tickOuter = ringRadius;
@@ -1172,37 +1138,25 @@
 
         if (isMajor) {
           const labelRadius = ringRadius - ringRadius * 0.15;
-          const lx = Math.cos(rad) * labelRadius;
-          const ly = Math.sin(rad) * labelRadius;
-          drawText(ctx, String(deg), lx, ly, {
+          drawText(ctx, String(deg), Math.cos(rad) * labelRadius, Math.sin(rad) * labelRadius, {
             font: `700 ${Math.max(10, ringRadius * 0.07)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
             fillStyle: "rgba(255,255,255,0.95)"
           });
         }
       }
 
-      ctx.save();
-      ctx.rotate(targetRotation);
+      const targetRad = angleToCanvasRad(targetDeg);
+      const oppositeRad = angleToCanvasRad(clampAngle360(targetDeg + 180));
+
       ctx.beginPath();
-      ctx.moveTo(0, -ringRadius * 0.94);
-      ctx.lineTo(0, ringRadius * 0.94);
+      ctx.moveTo(Math.cos(targetRad) * ringRadius * 0.94, Math.sin(targetRad) * ringRadius * 0.94);
+      ctx.lineTo(Math.cos(oppositeRad) * ringRadius * 0.94, Math.sin(oppositeRad) * ringRadius * 0.94);
       ctx.lineWidth = Math.max(3, ringRadius * 0.015);
       ctx.strokeStyle = "rgba(77,163,255,0.95)";
       ctx.stroke();
-      ctx.restore();
 
       ctx.save();
-      ctx.rotate(oppositeRotation);
-      ctx.beginPath();
-      ctx.moveTo(0, -ringRadius * 0.72);
-      ctx.lineTo(0, ringRadius * 0.72);
-      ctx.lineWidth = Math.max(2, ringRadius * 0.01);
-      ctx.strokeStyle = "rgba(77,163,255,0.55)";
-      ctx.stroke();
-      ctx.restore();
-
-      ctx.save();
-      ctx.rotate(horizonRotation);
+      ctx.rotate((rollDeg * Math.PI) / 180);
 
       ctx.beginPath();
       ctx.moveTo(-halfLineWidth, 0);
@@ -1235,6 +1189,7 @@
       ctx.restore();
 
       const diff = normalizeSigned180(targetDeg - rollDeg);
+
       drawText(ctx, `Tilt ${formatSignedAngle(rollDeg)}`, width / 2, height * 0.14, {
         font: "700 18px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
         fillStyle: "rgba(240,180,41,0.98)"
@@ -1250,8 +1205,8 @@
         fillStyle: Math.abs(diff) <= 2 ? "rgba(88,211,141,0.98)" : "rgba(255,107,107,0.98)"
       });
 
-      drawText(ctx, "180° TERAZİ", width / 2, height * 0.86, {
-        font: "700 14px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
+      drawText(ctx, "0° SAĞ • 90° ÜST • 180° SOL • 270° ALT", width / 2, height * 0.86, {
+        font: "700 12px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
         fillStyle: "rgba(255,255,255,0.90)"
       });
     }
@@ -1282,9 +1237,19 @@
 
     grantBtnEl.addEventListener("click", async () => {
       try {
-        await requestPermission();
+        await requestCameraPermission();
+        try {
+          await requestSensorPermissionFromGesture();
+        } catch (sensorError) {
+          setStatus(`Kamera izni verildi.\nSensör izni alınamadı: ${sensorError.message}`);
+        }
         await populateDevices();
         await startSelectedCamera();
+        updateUiState();
+        updateAngleReadout();
+        if (sensorPermissionGranted) {
+          setStatus("Kamera ve sensör hazır.");
+        }
       } catch (error) {
         setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
       }
@@ -1325,14 +1290,6 @@
     torchBtnEl.addEventListener("click", async () => {
       try {
         await toggleTorch();
-      } catch (error) {
-        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
-      }
-    });
-
-    sensorBtnEl.addEventListener("click", async () => {
-      try {
-        await requestSensorPermission();
       } catch (error) {
         setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
       }
@@ -1350,7 +1307,6 @@
     screenLightSliderEl.addEventListener("input", () => {
       screenLightPercent = Number(screenLightSliderEl.value) || 0;
       updateScreenLightUi();
-      setStatus(`Ekran ışığı ${screenLightPercent}% yapıldı.`);
     });
 
     resetLightBtnEl.addEventListener("click", () => {
@@ -1360,11 +1316,16 @@
       setStatus("Ekran ışığı sıfırlandı.");
     });
 
-    resetAngleBtnEl.addEventListener("click", () => {
+    angle90BtnEl.addEventListener("click", () => {
       targetAngleInputEl.value = "90";
       updateAngleReadout();
       drawOverlay();
-      setStatus("Hedef açı 90° yapıldı.");
+    });
+
+    angle0BtnEl.addEventListener("click", () => {
+      targetAngleInputEl.value = "0";
+      updateAngleReadout();
+      drawOverlay();
     });
 
     window.addEventListener("resize", () => {
@@ -1390,1335 +1351,11 @@
       }
     });
 
-    updateAngleReadout();
     updateUiState();
     updateScreenLightUi();
-    drawOverlay();
-    startOverlayLoop();
-    setStatus("Hazır. Önce kamera izni ver. Overlay için sensör izni de ver.");
-  </script>
-</body>
-</html><!doctype html>
-<html lang="tr">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>IOL Marking Capture</title>
-  <style>
-    :root {
-      color-scheme: dark;
-      --bg: #0b0f16;
-      --panel: #151b24;
-      --panel-2: #10151d;
-      --border: #2a3140;
-      --text: #edf2f7;
-      --muted: #a6b0c0;
-      --accent: #4da3ff;
-      --success: #58d38d;
-      --danger: #ff6b6b;
-      --warning: #f0b429;
-      --overlay-green: rgba(88, 211, 141, 0.95);
-      --overlay-yellow: rgba(240, 180, 41, 0.95);
-      --overlay-red: rgba(255, 107, 107, 0.95);
-      --overlay-white: rgba(255, 255, 255, 0.92);
-      --overlay-blue: rgba(77, 163, 255, 0.95);
-    }
-
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    html, body {
-      margin: 0;
-      height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Arial, sans-serif;
-      overflow: hidden;
-    }
-
-    body {
-      padding:
-        max(10px, env(safe-area-inset-top))
-        10px
-        max(10px, env(safe-area-inset-bottom))
-        10px;
-    }
-
-    .app {
-      height: 100%;
-      display: grid;
-      grid-template-rows: auto minmax(50vh, 58vh) 1fr;
-      gap: 10px;
-    }
-
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 12px;
-      min-height: 0;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
-    }
-
-    .topbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .title-wrap {
-      display: grid;
-      gap: 4px;
-    }
-
-    .badge {
-      display: inline-block;
-      width: fit-content;
-      padding: 4px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: #111827;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 22px;
-      line-height: 1.1;
-    }
-
-    .muted {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .preview-card {
-      padding: 8px;
-      display: grid;
-      grid-template-rows: 1fr auto;
-      gap: 8px;
-      min-height: 0;
-    }
-
-    .preview-shell {
-      position: relative;
-      min-height: 0;
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      overflow: hidden;
-      background: #000;
-    }
-
-    video,
-    canvas {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-
-    video {
-      object-fit: cover;
-      background: #000;
-      z-index: 1;
-    }
-
-    #overlayCanvas {
-      z-index: 2;
-      pointer-events: none;
-    }
-
-    .preview-head {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      right: 10px;
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      pointer-events: none;
-      z-index: 3;
-    }
-
-    .pill {
-      border-radius: 999px;
-      padding: 6px 10px;
-      font-size: 12px;
-      background: rgba(10, 12, 16, 0.78);
-      border: 1px solid rgba(255,255,255,0.12);
-      backdrop-filter: blur(10px);
-    }
-
-    .preview-footer {
-      display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .meta {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: var(--panel-2);
-      padding: 8px;
-      min-height: 54px;
-    }
-
-    .meta-label {
-      font-size: 10px;
-      color: var(--muted);
-      margin-bottom: 2px;
-    }
-
-    .meta-value {
-      font-size: 12px;
-      line-height: 1.2;
-      word-break: break-word;
-    }
-
-    .form-card {
-      display: grid;
-      grid-template-rows: auto auto auto auto;
-      gap: 10px;
-      min-height: 0;
-    }
-
-    .grid-2,
-    .grid-3,
-    .grid-4,
-    .grid-5 {
-      display: grid;
-      gap: 8px;
-    }
-
-    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-    .grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-
-    label.field {
-      display: grid;
-      gap: 4px;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    input, select, button {
-      min-height: 46px;
-      width: 100%;
-      border-radius: 14px;
-      border: 1px solid var(--border);
-      background: #0f141b;
-      color: var(--text);
-      padding: 0 12px;
-      font-size: 14px;
-    }
-
-    input[type="number"] {
-      appearance: textfield;
-      -moz-appearance: textfield;
-    }
-
-    input[type="number"]::-webkit-outer-spin-button,
-    input[type="number"]::-webkit-inner-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
-
-    button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      cursor: pointer;
-      font-weight: 600;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)),
-        linear-gradient(180deg, #313847, #1c222d);
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.08),
-        inset 0 -1px 0 rgba(0,0,0,0.25),
-        0 1px 1px rgba(0,0,0,0.35),
-        0 8px 18px rgba(0,0,0,0.16);
-    }
-
-    button:disabled,
-    input:disabled,
-    select:disabled {
-      opacity: 0.55;
-      cursor: not-allowed;
-    }
-
-    .btn-icon {
-      font-size: 22px;
-      line-height: 1;
-      flex: 0 0 auto;
-    }
-
-    .success { border-color: rgba(88, 211, 141, 0.45); }
-    .danger { border-color: rgba(255, 107, 107, 0.45); }
-    .warning { border-color: rgba(240, 180, 41, 0.45); }
-
-    .status {
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      background: var(--panel-2);
-      padding: 10px 12px;
-      color: var(--muted);
-      font-size: 13px;
-      white-space: pre-wrap;
-      min-height: 72px;
-    }
-
-    .recording {
-      border-color: rgba(255, 107, 107, 0.9) !important;
-      box-shadow:
-        0 0 0 2px rgba(255, 107, 107, 0.22),
-        inset 0 1px 0 rgba(255,255,255,0.08);
-    }
-
-    .hint {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    @media (max-width: 860px) {
-      .preview-footer,
-      .grid-2,
-      .grid-3,
-      .grid-4,
-      .grid-5 {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      h1 {
-        font-size: 19px;
-      }
-
-      .app {
-        grid-template-rows: auto minmax(48vh, 56vh) 1fr;
-      }
-    }
-  </style>
-</head>
-<body>
-  <main class="app">
-    <section class="card topbar">
-      <div class="title-wrap">
-        <div class="badge">IOL Capture iPhone</div>
-        <h1>Toric Marking Overlay • 360° gönye + 180° terazi</h1>
-        <div class="muted">v1.15 • Büyük canlı görüntü • Galerisiz • Direkt kayıt</div>
-      </div>
-    </section>
-
-    <section class="card preview-card">
-      <div class="preview-shell">
-        <video id="video" autoplay playsinline muted></video>
-        <canvas id="overlayCanvas"></canvas>
-
-        <div class="preview-head">
-          <div class="pill" id="modePill">📸 Foto</div>
-          <div class="pill" id="streamPill">Hazır değil</div>
-        </div>
-      </div>
-
-      <div class="preview-footer">
-        <div class="meta">
-          <div class="meta-label">Kamera</div>
-          <div class="meta-value" id="deviceInfo">-</div>
-        </div>
-        <div class="meta">
-          <div class="meta-label">Çözünürlük</div>
-          <div class="meta-value" id="resolutionInfo">-</div>
-        </div>
-        <div class="meta">
-          <div class="meta-label">Torch</div>
-          <div class="meta-value" id="torchInfo">Destek bilinmiyor</div>
-        </div>
-        <div class="meta">
-          <div class="meta-label">Süre</div>
-          <div class="meta-value" id="durationInfo">00:00</div>
-        </div>
-        <div class="meta">
-          <div class="meta-label">Tilt</div>
-          <div class="meta-value" id="tiltInfo">-</div>
-        </div>
-        <div class="meta">
-          <div class="meta-label">Hedef / Fark</div>
-          <div class="meta-value" id="angleInfo">-</div>
-        </div>
-      </div>
-    </section>
-
-    <section class="card form-card">
-      <div class="grid-2">
-        <label class="field">
-          İsim
-          <input id="patientNameInput" type="text" placeholder="Örn: Ahmet Yılmaz" />
-        </label>
-
-        <label class="field">
-          IOL Tipi
-          <input id="iolTypeInput" type="text" placeholder="Örn: AcrySof Toric" />
-        </label>
-      </div>
-
-      <div class="grid-5">
-        <label class="field">
-          Diyoptri
-          <input id="diopterInput" type="text" placeholder="Örn: 22.5D" />
-        </label>
-
-        <label class="field">
-          Hedef Açı
-          <input id="targetAngleInput" type="number" min="0" max="359" step="1" placeholder="Örn: 87" value="90" />
-        </label>
-
-        <label class="field">
-          Kamera
-          <select id="videoDevice"></select>
-        </label>
-
-        <label class="field">
-          Işık
-          <button id="torchBtn" type="button" disabled>
-            <span class="btn-icon" id="torchIcon">💡</span>
-            <span id="torchLabel">Işık Aç</span>
-          </button>
-        </label>
-
-        <label class="field">
-          Sensör
-          <button id="sensorBtn" type="button" class="warning">
-            <span class="btn-icon">🧭</span>
-            <span id="sensorBtnLabel">Sensör İzni</span>
-          </button>
-        </label>
-      </div>
-
-      <div class="grid-5">
-        <button id="grantBtn" class="success" type="button">
-          <span class="btn-icon">🔓</span>
-          <span>İzin Ver ve Başlat</span>
-        </button>
-
-        <button id="modeToggleBtn" type="button">
-          <span class="btn-icon" id="modeToggleIcon">📸</span>
-          <span id="modeToggleLabel">Foto Modu</span>
-        </button>
-
-        <button id="captureBtn" class="success" type="button" disabled>
-          <span class="btn-icon" id="captureBtnIcon">📸</span>
-          <span id="captureBtnLabel">Foto Çek ve Kaydet</span>
-        </button>
-
-        <button id="calibrateBtn" type="button" class="warning" disabled>
-          <span class="btn-icon">📐</span>
-          <span>0° Kalibre Et</span>
-        </button>
-
-        <button id="refreshBtn" type="button" disabled>
-          <span class="btn-icon">🔄</span>
-          <span>Yenile</span>
-        </button>
-      </div>
-
-      <div class="status" id="status">Hazır. Önce kamera izni ver. Overlay için sensör izni de ver.</div>
-      <div class="hint">Overlay: dış halka 360° gönye, merkezde 180° terazi. Kalibrasyon sonrası tilt ve hedef açı farkı canlı görünür.</div>
-    </section>
-  </main>
-
-  <script>
-    const videoEl = document.getElementById("video");
-    const overlayCanvasEl = document.getElementById("overlayCanvas");
-    const overlayCtx = overlayCanvasEl.getContext("2d");
-
-    const patientNameInputEl = document.getElementById("patientNameInput");
-    const iolTypeInputEl = document.getElementById("iolTypeInput");
-    const diopterInputEl = document.getElementById("diopterInput");
-    const targetAngleInputEl = document.getElementById("targetAngleInput");
-    const videoDeviceEl = document.getElementById("videoDevice");
-
-    const grantBtnEl = document.getElementById("grantBtn");
-    const modeToggleBtnEl = document.getElementById("modeToggleBtn");
-    const modeToggleIconEl = document.getElementById("modeToggleIcon");
-    const modeToggleLabelEl = document.getElementById("modeToggleLabel");
-    const captureBtnEl = document.getElementById("captureBtn");
-    const captureBtnIconEl = document.getElementById("captureBtnIcon");
-    const captureBtnLabelEl = document.getElementById("captureBtnLabel");
-    const refreshBtnEl = document.getElementById("refreshBtn");
-
-    const torchBtnEl = document.getElementById("torchBtn");
-    const torchIconEl = document.getElementById("torchIcon");
-    const torchLabelEl = document.getElementById("torchLabel");
-
-    const sensorBtnEl = document.getElementById("sensorBtn");
-    const sensorBtnLabelEl = document.getElementById("sensorBtnLabel");
-    const calibrateBtnEl = document.getElementById("calibrateBtn");
-
-    const statusEl = document.getElementById("status");
-    const deviceInfoEl = document.getElementById("deviceInfo");
-    const resolutionInfoEl = document.getElementById("resolutionInfo");
-    const torchInfoEl = document.getElementById("torchInfo");
-    const durationInfoEl = document.getElementById("durationInfo");
-    const tiltInfoEl = document.getElementById("tiltInfo");
-    const angleInfoEl = document.getElementById("angleInfo");
-    const modePillEl = document.getElementById("modePill");
-    const streamPillEl = document.getElementById("streamPill");
-
-    let currentStream = null;
-    let currentTrack = null;
-    let permissionGranted = false;
-
-    let captureMode = "photo";
-    let torchSupported = false;
-    let torchEnabled = false;
-
-    let mediaRecorder = null;
-    let recordedChunks = [];
-    let recordingStartedAt = null;
-    let recordingTimerId = null;
-    let selectedRecordingMimeType = "";
-
-    let sensorPermissionGranted = false;
-    let sensorListening = false;
-    let currentRoll = 0;
-    let zeroOffset = 0;
-    let lastOrientationEvent = null;
-    let overlayAnimationId = null;
-
-    function setStatus(message) {
-      statusEl.textContent = message;
-    }
-
-    function pad2(value) {
-      return String(value).padStart(2, "0");
-    }
-
-    function clampAngle360(value) {
-      let result = value % 360;
-      if (result < 0) result += 360;
-      return result;
-    }
-
-    function normalizeSigned180(value) {
-      let result = clampAngle360(value);
-      if (result > 180) result -= 360;
-      return result;
-    }
-
-    function formatSignedAngle(value) {
-      const rounded = Math.round(value * 10) / 10;
-      return `${rounded > 0 ? "+" : ""}${rounded.toFixed(1)}°`;
-    }
-
-    function getTargetAngle() {
-      const raw = Number(targetAngleInputEl.value);
-      if (!Number.isFinite(raw)) return 0;
-      return clampAngle360(Math.round(raw));
-    }
-
-    function createTimeStampFilePart(timestamp) {
-      const d = new Date(timestamp);
-      return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}_${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
-    }
-
-    function sanitizePart(value, fallback = "x") {
-      const v = String(value || "").trim();
-      if (!v) return fallback;
-      return v
-        .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "-")
-        .replace(/\s+/g, "_")
-        .replace(/_+/g, "_")
-        .replace(/^[_\-.]+|[_\-.]+$/g, "")
-        .slice(0, 60) || fallback;
-    }
-
-    function normalizeAngleValue(value) {
-      const num = Number(value);
-      if (!Number.isFinite(num)) return "";
-      return String(clampAngle360(Math.round(num))).padStart(3, "0");
-    }
-
-    function getOutputBaseName() {
-      const name = sanitizePart(patientNameInputEl.value, "hasta");
-      const iol = sanitizePart(iolTypeInputEl.value, "IOL");
-      const diopter = sanitizePart(diopterInputEl.value, "xD");
-      const angle = normalizeAngleValue(targetAngleInputEl.value) || "000";
-      return `${name}_${iol}_${diopter}_${angle}deg`;
-    }
-
-    function updateModeUi() {
-      const isVideo = captureMode === "video";
-      const isRecording = Boolean(mediaRecorder && mediaRecorder.state === "recording");
-
-      modeToggleIconEl.textContent = isVideo ? "🎥" : "📸";
-      modeToggleLabelEl.textContent = isVideo ? "Video Modu" : "Foto Modu";
-      captureBtnIconEl.textContent = isVideo ? (isRecording ? "⏹️" : "🎥") : "📸";
-      captureBtnLabelEl.textContent = isVideo
-        ? (isRecording ? "Videoyu Bitir ve Kaydet" : "Video Başlat")
-        : "Foto Çek ve Kaydet";
-      modePillEl.textContent = isVideo ? "🎥 Video" : "📸 Foto";
-      captureBtnEl.classList.toggle("recording", isRecording);
-    }
-
-    function updateTorchUi() {
-      if (!torchSupported) {
-        torchInfoEl.textContent = "Destek yok";
-        torchLabelEl.textContent = "Işık Yok";
-        torchIconEl.textContent = "🚫";
-        torchBtnEl.disabled = true;
-        return;
-      }
-
-      torchInfoEl.textContent = torchEnabled ? "Açık" : "Kapalı";
-      torchLabelEl.textContent = torchEnabled ? "Işığı Kapat" : "Işık Aç";
-      torchIconEl.textContent = torchEnabled ? "🔦" : "💡";
-      torchBtnEl.disabled = !currentTrack;
-    }
-
-    function updateSensorUi() {
-      sensorBtnLabelEl.textContent = sensorPermissionGranted ? "Sensör Hazır" : "Sensör İzni";
-      calibrateBtnEl.disabled = !sensorPermissionGranted;
-    }
-
-    function updateUiState() {
-      const hasStream = Boolean(currentStream);
-      const isRecording = Boolean(mediaRecorder && mediaRecorder.state === "recording");
-
-      captureBtnEl.disabled = !hasStream;
-      refreshBtnEl.disabled = !permissionGranted || isRecording;
-      videoDeviceEl.disabled = !permissionGranted || isRecording;
-      modeToggleBtnEl.disabled = isRecording;
-      grantBtnEl.disabled = permissionGranted && hasStream;
-
-      streamPillEl.textContent = hasStream ? "Canlı" : "Kapalı";
-      updateModeUi();
-      updateTorchUi();
-      updateSensorUi();
-    }
-
-    function setDurationLabel(ms = 0) {
-      const totalSec = Math.floor(ms / 1000);
-      durationInfoEl.textContent = `${pad2(Math.floor(totalSec / 60))}:${pad2(totalSec % 60)}`;
-    }
-
-    function startRecordingTimer() {
-      stopRecordingTimer();
-      recordingStartedAt = Date.now();
-      recordingTimerId = window.setInterval(() => {
-        setDurationLabel(Date.now() - recordingStartedAt);
-      }, 250);
-    }
-
-    function stopRecordingTimer() {
-      if (recordingTimerId !== null) {
-        clearInterval(recordingTimerId);
-        recordingTimerId = null;
-      }
-    }
-
-    function cleanupStream() {
-      if (!currentStream) return;
-      currentStream.getTracks().forEach(track => track.stop());
-      currentStream = null;
-      currentTrack = null;
-      torchSupported = false;
-      torchEnabled = false;
-      videoEl.pause();
-      videoEl.srcObject = null;
-      streamPillEl.textContent = "Kapalı";
-      deviceInfoEl.textContent = "-";
-      resolutionInfoEl.textContent = "-";
-      setDurationLabel(0);
-    }
-
-    function getSelectedDeviceLabel() {
-      return videoDeviceEl.options[videoDeviceEl.selectedIndex]?.textContent ?? "-";
-    }
-
-    function pickSupportedVideoMimeType() {
-      const types = [
-        "video/mp4;codecs=hvc1,mp4a.40.2",
-        "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
-        "video/mp4;codecs=avc1,mp4a.40.2",
-        "video/mp4",
-        "video/webm;codecs=vp9,opus",
-        "video/webm;codecs=vp8,opus",
-        "video/webm"
-      ];
-
-      for (const type of types) {
-        if (window.MediaRecorder && MediaRecorder.isTypeSupported(type)) {
-          return type;
-        }
-      }
-      return "";
-    }
-
-    async function shareOrDownloadFile(file) {
-      if (navigator.share && navigator.canShare) {
-        try {
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: file.name
-            });
-            return;
-          }
-        } catch (error) {
-          if (error && error.name === "AbortError") {
-            setStatus("Paylaşım iptal edildi.");
-            return;
-          }
-        }
-      }
-
-      const url = URL.createObjectURL(file);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-    }
-
-    async function requestPermission() {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error("Tarayıcı kamera erişimini desteklemiyor.");
-      }
-
-      const tempStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
-        audio: false
-      });
-
-      tempStream.getTracks().forEach(track => track.stop());
-      permissionGranted = true;
-      selectedRecordingMimeType = pickSupportedVideoMimeType();
-    }
-
-    async function populateDevices() {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoInputs = devices.filter(device => device.kind === "videoinput");
-      const previous = videoDeviceEl.value;
-
-      videoDeviceEl.innerHTML = "";
-
-      if (!videoInputs.length) {
-        throw new Error("Kamera bulunamadı.");
-      }
-
-      for (const device of videoInputs) {
-        const option = document.createElement("option");
-        option.value = device.deviceId;
-        option.textContent = device.label?.trim() || `Kamera ${videoDeviceEl.options.length + 1}`;
-        videoDeviceEl.appendChild(option);
-      }
-
-      const preferredIndex =
-        videoInputs.findIndex(item => /triple|arka|back|rear/i.test(item.label || "")) >= 0
-          ? videoInputs.findIndex(item => /triple|arka|back|rear/i.test(item.label || ""))
-          : videoInputs.findIndex(item => /wide|weit|ultra/i.test(item.label || ""));
-
-      const previousIndex = videoInputs.findIndex(item => item.deviceId === previous);
-
-      videoDeviceEl.selectedIndex =
-        previousIndex >= 0
-          ? previousIndex
-          : preferredIndex >= 0
-            ? preferredIndex
-            : 0;
-    }
-
-    function waitForVideoReady(video) {
-      return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error("Video hazır olmadı.")), 5000);
-        video.addEventListener("loadedmetadata", () => {
-          clearTimeout(timeout);
-          resolve();
-        }, { once: true });
-      });
-    }
-
-    async function detectTorchSupport(track) {
-      torchSupported = false;
-      torchEnabled = false;
-
-      if (!track?.getCapabilities) {
-        updateTorchUi();
-        return;
-      }
-
-      const caps = track.getCapabilities();
-      torchSupported = Boolean(caps?.torch);
-      updateTorchUi();
-    }
-
-    async function startSelectedCamera() {
-      const deviceId = videoDeviceEl.value;
-      if (!deviceId) throw new Error("Önce kamera seç.");
-
-      if (mediaRecorder && mediaRecorder.state === "recording") {
-        throw new Error("Kayıt sürerken kamera değiştirilemez.");
-      }
-
-      cleanupStream();
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: {
-          deviceId: { exact: deviceId },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          frameRate: { ideal: 30 }
-        }
-      });
-
-      currentStream = stream;
-      currentTrack = stream.getVideoTracks()[0];
-      videoEl.srcObject = stream;
-
-      currentTrack.addEventListener("ended", () => {
-        cleanupStream();
-        updateUiState();
-        setStatus("Kamera akışı sona erdi.");
-      });
-
-      await waitForVideoReady(videoEl);
-      await videoEl.play();
-
-      const settings = currentTrack.getSettings();
-      deviceInfoEl.textContent = getSelectedDeviceLabel();
-      resolutionInfoEl.textContent = `${settings.width ?? "?"}x${settings.height ?? "?"} @ ${settings.frameRate ?? "?"}fps`;
-
-      await detectTorchSupport(currentTrack);
-
-      setStatus(`Canlı görüntü başladı.\nKamera: ${getSelectedDeviceLabel()}\nÇözünürlük: ${resolutionInfoEl.textContent}`);
-      updateUiState();
-      resizeOverlayCanvas();
-      drawOverlay();
-    }
-
-    async function toggleTorch() {
-      if (!currentTrack || !torchSupported) return;
-
-      const nextState = !torchEnabled;
-      await currentTrack.applyConstraints({
-        advanced: [{ torch: nextState }]
-      });
-
-      torchEnabled = nextState;
-      updateTorchUi();
-      setStatus(torchEnabled ? "Işık açıldı." : "Işık kapatıldı.");
-    }
-
-    async function capturePhotoAndSave() {
-      if (!currentStream) throw new Error("Önce kamera açılmalı.");
-
-      const width = videoEl.videoWidth;
-      const height = videoEl.videoHeight;
-      if (!width || !height) throw new Error("Video hazır değil.");
-
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Canvas alınamadı.");
-
-      ctx.drawImage(videoEl, 0, 0, width, height);
-
-      const overlayRendered = document.createElement("canvas");
-      overlayRendered.width = width;
-      overlayRendered.height = height;
-      const overlayRenderedCtx = overlayRendered.getContext("2d");
-
-      drawOverlayOnContext(
-        overlayRenderedCtx,
-        width,
-        height,
-        getCalibratedRoll(),
-        getTargetAngle()
-      );
-
-      ctx.drawImage(overlayRendered, 0, 0, width, height);
-
-      const blob = await new Promise((resolve, reject) => {
-        canvas.toBlob(result => {
-          if (!result) {
-            reject(new Error("PNG üretilemedi."));
-            return;
-          }
-          resolve(result);
-        }, "image/png");
-      });
-
-      const fileName = `${getOutputBaseName()}_${createTimeStampFilePart(Date.now())}.png`;
-      const file = new File([blob], fileName, { type: "image/png" });
-
-      await shareOrDownloadFile(file);
-      setStatus(`Foto kaydedildi.\nDosya: ${fileName}`);
-    }
-
-    async function startVideoRecording() {
-      if (!currentStream) throw new Error("Önce kamera açılmalı.");
-      if (!window.MediaRecorder) throw new Error("Video kayıt desteklenmiyor.");
-      if (!selectedRecordingMimeType) throw new Error("Uygun video formatı bulunamadı.");
-
-      recordedChunks = [];
-      mediaRecorder = new MediaRecorder(currentStream, { mimeType: selectedRecordingMimeType });
-
-      mediaRecorder.addEventListener("dataavailable", event => {
-        if (event.data && event.data.size > 0) {
-          recordedChunks.push(event.data);
-        }
-      });
-
-      mediaRecorder.addEventListener("error", event => {
-        const message = event.error?.message || "MediaRecorder hatası";
-        setStatus(`Hata:\n${message}`);
-      });
-
-      mediaRecorder.start(500);
-      startRecordingTimer();
-      updateUiState();
-      setStatus("Video kaydı başladı.");
-    }
-
-    async function stopVideoRecordingAndSave() {
-      if (!mediaRecorder || mediaRecorder.state !== "recording") return;
-
-      const recorder = mediaRecorder;
-
-      await new Promise(resolve => {
-        recorder.addEventListener("stop", resolve, { once: true });
-        recorder.stop();
-      });
-
-      stopRecordingTimer();
-
-      const mimeType = selectedRecordingMimeType || recorder.mimeType || "video/mp4";
-      const extension = mimeType.includes("webm") ? "webm" : "mp4";
-      const blob = new Blob(recordedChunks, { type: mimeType });
-      const fileName = `${getOutputBaseName()}_${createTimeStampFilePart(Date.now())}.${extension}`;
-      const file = new File([blob], fileName, { type: mimeType });
-
-      mediaRecorder = null;
-      recordedChunks = [];
-      updateUiState();
-
-      await shareOrDownloadFile(file);
-      setStatus(`Video kaydedildi.\nDosya: ${fileName}`);
-      setDurationLabel(0);
-    }
-
-    async function handleCaptureAction() {
-      if (captureMode === "photo") {
-        await capturePhotoAndSave();
-        return;
-      }
-
-      if (mediaRecorder && mediaRecorder.state === "recording") {
-        await stopVideoRecordingAndSave();
-        return;
-      }
-
-      await startVideoRecording();
-    }
-
-    function getScreenAngle() {
-      if (screen.orientation && typeof screen.orientation.angle === "number") {
-        return screen.orientation.angle;
-      }
-      if (typeof window.orientation === "number") {
-        return window.orientation;
-      }
-      return 0;
-    }
-
-    function computeRollFromOrientation(event) {
-      const beta = Number.isFinite(event.beta) ? event.beta : 0;
-      const gamma = Number.isFinite(event.gamma) ? event.gamma : 0;
-      const angle = getScreenAngle();
-
-      let roll;
-      switch (angle) {
-        case 90:
-          roll = beta;
-          break;
-        case -90:
-        case 270:
-          roll = -beta;
-          break;
-        case 180:
-          roll = -gamma;
-          break;
-        case 0:
-        default:
-          roll = gamma;
-          break;
-      }
-
-      if (!Number.isFinite(roll)) {
-        return 0;
-      }
-
-      return Math.max(-180, Math.min(180, roll));
-    }
-
-    function handleOrientation(event) {
-      lastOrientationEvent = event;
-      currentRoll = computeRollFromOrientation(event);
-      updateAngleReadout();
-    }
-
-    async function requestSensorPermission() {
-      if (sensorPermissionGranted) {
-        setStatus("Sensör zaten hazır.");
-        return;
-      }
-
-      if (typeof DeviceOrientationEvent === "undefined") {
-        throw new Error("Bu cihazda orientation sensörü erişimi yok.");
-      }
-
-      if (typeof DeviceOrientationEvent.requestPermission === "function") {
-        const result = await DeviceOrientationEvent.requestPermission();
-        if (result !== "granted") {
-          throw new Error("Sensör izni verilmedi.");
-        }
-      }
-
-      if (!sensorListening) {
-        window.addEventListener("deviceorientation", handleOrientation, true);
-        sensorListening = true;
-      }
-
-      sensorPermissionGranted = true;
-      updateSensorUi();
-      updateAngleReadout();
-      setStatus("Sensör izni verildi. İstersen 0° kalibre et.");
-    }
-
-    function getCalibratedRoll() {
-      return normalizeSigned180(currentRoll - zeroOffset);
-    }
-
-    function updateAngleReadout() {
-      const roll = getCalibratedRoll();
-      const target = getTargetAngle();
-      const diff = normalizeSigned180(target - roll);
-
-      tiltInfoEl.textContent = sensorPermissionGranted ? formatSignedAngle(roll) : "-";
-      angleInfoEl.textContent = sensorPermissionGranted
-        ? `${String(target).padStart(3, "0")}° / ${formatSignedAngle(diff)}`
-        : `${String(target).padStart(3, "0")}° / -`;
-    }
-
-    function calibrateZero() {
-      zeroOffset = currentRoll;
-      updateAngleReadout();
-      drawOverlay();
-      setStatus(`0° kalibrasyon yapıldı.\nReferans roll: ${formatSignedAngle(zeroOffset)}`);
-    }
-
-    function resizeOverlayCanvas() {
-      const rect = overlayCanvasEl.getBoundingClientRect();
-      const ratio = window.devicePixelRatio || 1;
-      const width = Math.max(1, Math.round(rect.width * ratio));
-      const height = Math.max(1, Math.round(rect.height * ratio));
-
-      if (overlayCanvasEl.width !== width || overlayCanvasEl.height !== height) {
-        overlayCanvasEl.width = width;
-        overlayCanvasEl.height = height;
-      }
-    }
-
-    function drawText(ctx, text, x, y, options = {}) {
-      const {
-        font = "600 14px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
-        fillStyle = "rgba(255,255,255,0.92)",
-        align = "center",
-        baseline = "middle",
-        shadow = true
-      } = options;
-
-      ctx.save();
-      ctx.font = font;
-      ctx.fillStyle = fillStyle;
-      ctx.textAlign = align;
-      ctx.textBaseline = baseline;
-      if (shadow) {
-        ctx.shadowColor = "rgba(0,0,0,0.65)";
-        ctx.shadowBlur = 6;
-      }
-      ctx.fillText(text, x, y);
-      ctx.restore();
-    }
-
-    function drawOverlayOnContext(ctx, width, height, rollDeg, targetDeg) {
-      if (!ctx) return;
-
-      ctx.clearRect(0, 0, width, height);
-
-      const cx = width / 2;
-      const cy = height / 2;
-      const radius = Math.min(width, height) * 0.33;
-      const ringRadius = radius;
-      const halfLineWidth = radius * 1.18;
-      const horizonRotation = (rollDeg * Math.PI) / 180;
-      const targetRotation = ((targetDeg - 90) * Math.PI) / 180;
-      const oppositeRotation = ((targetDeg + 180 - 90) * Math.PI) / 180;
-
-      ctx.save();
-      ctx.translate(cx, cy);
-
-      ctx.beginPath();
-      ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-      ctx.lineWidth = Math.max(2, ringRadius * 0.01);
-      ctx.strokeStyle = "rgba(255,255,255,0.40)";
-      ctx.stroke();
-
-      for (let deg = 0; deg < 360; deg += 5) {
-        const rad = ((deg - 90) * Math.PI) / 180;
-        const isMajor = deg % 30 === 0;
-        const isMid = deg % 10 === 0;
-        const tickOuter = ringRadius;
-        const tickInner = ringRadius - (isMajor ? ringRadius * 0.09 : isMid ? ringRadius * 0.06 : ringRadius * 0.03);
-
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(rad) * tickInner, Math.sin(rad) * tickInner);
-        ctx.lineTo(Math.cos(rad) * tickOuter, Math.sin(rad) * tickOuter);
-        ctx.lineWidth = isMajor ? 2.5 : isMid ? 1.7 : 1;
-        ctx.strokeStyle = isMajor ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.45)";
-        ctx.stroke();
-
-        if (isMajor) {
-          const labelRadius = ringRadius - ringRadius * 0.15;
-          const lx = Math.cos(rad) * labelRadius;
-          const ly = Math.sin(rad) * labelRadius;
-          drawText(ctx, String(deg), lx, ly, {
-            font: `700 ${Math.max(10, ringRadius * 0.07)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
-            fillStyle: "rgba(255,255,255,0.95)"
-          });
-        }
-      }
-
-      ctx.save();
-      ctx.rotate(targetRotation);
-      ctx.beginPath();
-      ctx.moveTo(0, -ringRadius * 0.94);
-      ctx.lineTo(0, ringRadius * 0.94);
-      ctx.lineWidth = Math.max(3, ringRadius * 0.015);
-      ctx.strokeStyle = "rgba(77,163,255,0.95)";
-      ctx.stroke();
-      ctx.restore();
-
-      ctx.save();
-      ctx.rotate(oppositeRotation);
-      ctx.beginPath();
-      ctx.moveTo(0, -ringRadius * 0.72);
-      ctx.lineTo(0, ringRadius * 0.72);
-      ctx.lineWidth = Math.max(2, ringRadius * 0.01);
-      ctx.strokeStyle = "rgba(77,163,255,0.55)";
-      ctx.stroke();
-      ctx.restore();
-
-      ctx.save();
-      ctx.rotate(horizonRotation);
-
-      ctx.beginPath();
-      ctx.moveTo(-halfLineWidth, 0);
-      ctx.lineTo(halfLineWidth, 0);
-      ctx.lineWidth = Math.max(4, ringRadius * 0.02);
-      ctx.strokeStyle = "rgba(240,180,41,0.95)";
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(-ringRadius * 0.16, 0);
-      ctx.lineTo(ringRadius * 0.16, 0);
-      ctx.lineWidth = Math.max(6, ringRadius * 0.03);
-      ctx.strokeStyle = "rgba(88,211,141,0.95)";
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(0, -ringRadius * 0.24);
-      ctx.lineTo(0, ringRadius * 0.24);
-      ctx.lineWidth = Math.max(3, ringRadius * 0.012);
-      ctx.strokeStyle = "rgba(255,255,255,0.92)";
-      ctx.stroke();
-
-      ctx.restore();
-
-      ctx.beginPath();
-      ctx.arc(0, 0, Math.max(4, ringRadius * 0.025), 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255,255,255,0.95)";
-      ctx.fill();
-
-      ctx.restore();
-
-      const diff = normalizeSigned180(targetDeg - rollDeg);
-      const tiltText = `Tilt ${formatSignedAngle(rollDeg)}`;
-      const targetText = `Hedef ${String(targetDeg).padStart(3, "0")}°`;
-      const diffText = `Fark ${formatSignedAngle(diff)}`;
-
-      drawText(ctx, tiltText, width / 2, height * 0.14, {
-        font: "700 18px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
-        fillStyle: "rgba(240,180,41,0.98)"
-      });
-
-      drawText(ctx, targetText, width / 2, height * 0.20, {
-        font: "700 16px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
-        fillStyle: "rgba(77,163,255,0.98)"
-      });
-
-      drawText(ctx, diffText, width / 2, height * 0.26, {
-        font: "700 16px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
-        fillStyle: Math.abs(diff) <= 2 ? "rgba(88,211,141,0.98)" : "rgba(255,107,107,0.98)"
-      });
-
-      drawText(ctx, "180° TERAZİ", width / 2, height * 0.86, {
-        font: "700 14px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
-        fillStyle: "rgba(255,255,255,0.90)"
-      });
-    }
-
-    function drawOverlay() {
-      resizeOverlayCanvas();
-      const roll = getCalibratedRoll();
-      const target = getTargetAngle();
-      drawOverlayOnContext(overlayCtx, overlayCanvasEl.width, overlayCanvasEl.height, roll, target);
-    }
-
-    function startOverlayLoop() {
-      if (overlayAnimationId !== null) {
-        cancelAnimationFrame(overlayAnimationId);
-      }
-
-      const loop = () => {
-        drawOverlay();
-        overlayAnimationId = requestAnimationFrame(loop);
-      };
-
-      loop();
-    }
-
-    async function handleCaptureAction() {
-      if (captureMode === "photo") {
-        await capturePhotoAndSave();
-        return;
-      }
-
-      if (mediaRecorder && mediaRecorder.state === "recording") {
-        await stopVideoRecordingAndSave();
-        return;
-      }
-
-      await startVideoRecording();
-    }
-
-    grantBtnEl.addEventListener("click", async () => {
-      try {
-        await requestPermission();
-        await populateDevices();
-        await startSelectedCamera();
-      } catch (error) {
-        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
-      }
-    });
-
-    refreshBtnEl.addEventListener("click", async () => {
-      try {
-        await populateDevices();
-        await startSelectedCamera();
-      } catch (error) {
-        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
-      }
-    });
-
-    videoDeviceEl.addEventListener("change", async () => {
-      try {
-        await startSelectedCamera();
-      } catch (error) {
-        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
-      }
-    });
-
-    modeToggleBtnEl.addEventListener("click", () => {
-      if (mediaRecorder && mediaRecorder.state === "recording") return;
-      captureMode = captureMode === "photo" ? "video" : "photo";
-      updateUiState();
-      setStatus(captureMode === "photo" ? "Foto modu seçildi." : "Video modu seçildi.");
-    });
-
-    captureBtnEl.addEventListener("click", async () => {
-      try {
-        await handleCaptureAction();
-      } catch (error) {
-        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
-      }
-    });
-
-    torchBtnEl.addEventListener("click", async () => {
-      try {
-        await toggleTorch();
-      } catch (error) {
-        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
-      }
-    });
-
-    sensorBtnEl.addEventListener("click", async () => {
-      try {
-        await requestSensorPermission();
-      } catch (error) {
-        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
-      }
-    });
-
-    calibrateBtnEl.addEventListener("click", () => {
-      calibrateZero();
-    });
-
-    targetAngleInputEl.addEventListener("input", () => {
-      updateAngleReadout();
-      drawOverlay();
-    });
-
-    window.addEventListener("resize", () => {
-      drawOverlay();
-    });
-
-    navigator.mediaDevices?.addEventListener?.("devicechange", async () => {
-      if (!permissionGranted) return;
-      try {
-        await populateDevices();
-        updateUiState();
-      } catch (_) {}
-    });
-
-    window.addEventListener("beforeunload", () => {
-      stopRecordingTimer();
-      cleanupStream();
-      if (sensorListening) {
-        window.removeEventListener("deviceorientation", handleOrientation, true);
-      }
-      if (overlayAnimationId !== null) {
-        cancelAnimationFrame(overlayAnimationId);
-      }
-    });
-
     updateAngleReadout();
-    updateUiState();
     drawOverlay();
     startOverlayLoop();
-    setStatus("Hazır. Önce kamera izni ver. Overlay için sensör izni de ver.");
   </script>
 </body>
 </html>
