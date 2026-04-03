@@ -101,6 +101,7 @@
       border-radius: 16px;
       overflow: hidden;
       background: #000;
+      touch-action: none;
     }
 
     video,
@@ -146,7 +147,7 @@
 
     .controls {
       display: grid;
-      grid-template-rows: auto auto auto;
+      grid-template-rows: auto auto auto auto;
       gap: 8px;
       min-height: 0;
     }
@@ -187,6 +188,13 @@
     input[type="number"]::-webkit-inner-spin-button {
       -webkit-appearance: none;
       margin: 0;
+    }
+
+    input[type="range"] {
+      min-height: 32px;
+      padding: 0;
+      background: transparent;
+      border: none;
     }
 
     button {
@@ -244,6 +252,20 @@
       min-height: 52px;
     }
 
+    .range-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .range-value {
+      font-size: 12px;
+      color: var(--text);
+      min-width: 36px;
+      text-align: right;
+    }
+
     @media (max-width: 900px) {
       .grid-4,
       .grid-5 {
@@ -258,12 +280,12 @@
       <div>
         <div class="badge">IOL Capture iPhone</div>
         <h1>Toric Marking Overlay</h1>
-        <div class="muted">v1.21 • Minimal buton • Varsayılan açı 63</div>
+        <div class="muted">v1.22 • Slider + parmakla çevirme • 0–180 eksen</div>
       </div>
     </section>
 
     <section class="card preview-card">
-      <div class="preview-shell">
+      <div id="previewShell" class="preview-shell">
         <video id="video" autoplay playsinline muted></video>
         <canvas id="overlayCanvas"></canvas>
 
@@ -293,9 +315,17 @@
 
         <label class="field">
           Hedef Açı
-          <input id="targetAngleInput" type="number" min="0" max="359" step="1" value="63" />
+          <input id="targetAngleInput" type="number" min="0" max="180" step="1" value="63" />
         </label>
       </div>
+
+      <label class="field">
+        Hedef Açı Slider
+        <div class="range-row">
+          <input id="targetAngleSlider" type="range" min="0" max="180" step="1" value="63" />
+          <span id="targetAngleSliderValue" class="range-value">63°</span>
+        </div>
+      </label>
 
       <div class="grid-5">
         <label class="field">
@@ -337,6 +367,7 @@
   </main>
 
   <script>
+    const previewShellEl = document.getElementById("previewShell");
     const videoEl = document.getElementById("video");
     const overlayCanvasEl = document.getElementById("overlayCanvas");
     const overlayCtx = overlayCanvasEl.getContext("2d");
@@ -345,6 +376,8 @@
     const iolTypeInputEl = document.getElementById("iolTypeInput");
     const diopterInputEl = document.getElementById("diopterInput");
     const targetAngleInputEl = document.getElementById("targetAngleInput");
+    const targetAngleSliderEl = document.getElementById("targetAngleSlider");
+    const targetAngleSliderValueEl = document.getElementById("targetAngleSliderValue");
     const videoDeviceEl = document.getElementById("videoDevice");
 
     const grantBtnEl = document.getElementById("grantBtn");
@@ -369,6 +402,7 @@
     let currentRoll = 0;
     let zeroOffset = 0;
     let overlayAnimationId = null;
+    let isDraggingAxis = false;
 
     function setStatus(message) {
       statusEl.textContent = message;
@@ -376,6 +410,14 @@
 
     function pad2(value) {
       return String(value).padStart(2, "0");
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function clampAxis180(value) {
+      return clamp(Math.round(value), 0, 180);
     }
 
     function clampAngle360(value) {
@@ -397,7 +439,15 @@
     function getTargetAngle() {
       const raw = Number(targetAngleInputEl.value);
       if (!Number.isFinite(raw)) return 63;
-      return clampAngle360(Math.round(raw));
+      return clampAxis180(raw);
+    }
+
+    function setTargetAngle(angle) {
+      const normalized = clampAxis180(angle);
+      targetAngleInputEl.value = String(normalized);
+      targetAngleSliderEl.value = String(normalized);
+      targetAngleSliderValueEl.textContent = `${normalized}°`;
+      drawOverlay();
     }
 
     function createTimeStampFilePart(timestamp) {
@@ -424,7 +474,7 @@
     function normalizeAngleValue(value) {
       const num = Number(value);
       if (!Number.isFinite(num)) return "";
-      return String(clampAngle360(Math.round(num))).padStart(3, "0");
+      return String(clampAxis180(num)).padStart(3, "0");
     }
 
     function getOutputBaseName() {
@@ -788,8 +838,9 @@
       ctx.strokeStyle = "rgba(255,255,255,0.46)";
       ctx.stroke();
 
-      for (let deg = 0; deg < 360; deg += 5) {
+      for (let deg = 0; deg < 180; deg += 5) {
         const rad = angleToCanvasRad(deg);
+        const opposite = angleToCanvasRad(deg + 180);
         const isMajor = deg % 30 === 0;
         const isMid = deg % 10 === 0;
         const tickOuter = ringRadius;
@@ -798,6 +849,8 @@
         ctx.beginPath();
         ctx.moveTo(Math.cos(rad) * tickInner, Math.sin(rad) * tickInner);
         ctx.lineTo(Math.cos(rad) * tickOuter, Math.sin(rad) * tickOuter);
+        ctx.moveTo(Math.cos(opposite) * tickInner, Math.sin(opposite) * tickInner);
+        ctx.lineTo(Math.cos(opposite) * tickOuter, Math.sin(opposite) * tickOuter);
         ctx.lineWidth = isMajor ? 3 : isMid ? 1.9 : 1.1;
         ctx.strokeStyle = isMajor ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.38)";
         ctx.stroke();
@@ -812,7 +865,7 @@
       }
 
       const targetRad = angleToCanvasRad(targetDeg);
-      const oppositeRad = angleToCanvasRad(clampAngle360(targetDeg + 180));
+      const oppositeRad = angleToCanvasRad(targetDeg + 180);
 
       ctx.beginPath();
       ctx.moveTo(Math.cos(targetRad) * ringRadius * 0.98, Math.sin(targetRad) * ringRadius * 0.98);
@@ -882,6 +935,22 @@
       };
 
       loop();
+    }
+
+    function eventPointToAxisAngle(clientX, clientY) {
+      const rect = previewShellEl.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = clientX - cx;
+      const dy = cy - clientY;
+      const deg360 = clampAngle360(Math.atan2(dy, dx) * 180 / Math.PI);
+      return deg360 > 180 ? deg360 - 180 : deg360;
+    }
+
+    function updateAxisFromPointerEvent(event) {
+      const point = event.touches?.[0] || event;
+      if (!point) return;
+      setTargetAngle(eventPointToAxisAngle(point.clientX, point.clientY));
     }
 
     async function capturePhoto() {
@@ -1006,7 +1075,30 @@
     });
 
     targetAngleInputEl.addEventListener("input", () => {
-      drawOverlay();
+      setTargetAngle(targetAngleInputEl.value);
+    });
+
+    targetAngleSliderEl.addEventListener("input", () => {
+      setTargetAngle(targetAngleSliderEl.value);
+    });
+
+    previewShellEl.addEventListener("pointerdown", event => {
+      isDraggingAxis = true;
+      previewShellEl.setPointerCapture?.(event.pointerId);
+      updateAxisFromPointerEvent(event);
+    });
+
+    previewShellEl.addEventListener("pointermove", event => {
+      if (!isDraggingAxis) return;
+      updateAxisFromPointerEvent(event);
+    });
+
+    previewShellEl.addEventListener("pointerup", () => {
+      isDraggingAxis = false;
+    });
+
+    previewShellEl.addEventListener("pointercancel", () => {
+      isDraggingAxis = false;
     });
 
     window.addEventListener("resize", () => {
@@ -1031,6 +1123,7 @@
       }
     });
 
+    setTargetAngle(63);
     updateUiState();
     drawOverlay();
     startOverlayLoop();
