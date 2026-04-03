@@ -14,8 +14,8 @@
       --text: #edf2f7;
       --muted: #a6b0c0;
       --success: #58d38d;
-      --danger: #ff6b6b;
       --warning: #f0b429;
+      --danger: #ff6b6b;
     }
 
     * {
@@ -252,6 +252,7 @@
 
     .success { border-color: rgba(88, 211, 141, 0.45); }
     .warning { border-color: rgba(240, 180, 41, 0.45); }
+    .danger { border-color: rgba(255, 107, 107, 0.45); }
 
     .status {
       border: 1px solid var(--border);
@@ -289,7 +290,7 @@
       <div>
         <div class="badge">IOL Capture iPhone</div>
         <h1>Toric Marking Overlay</h1>
-        <div class="muted">v1.18 • Yalnız foto • Direkt indirme</div>
+        <div class="muted">v1.19 • Yalnız foto • Otomatik açı yazıları kaldırıldı</div>
       </div>
     </section>
 
@@ -322,8 +323,8 @@
           <div class="meta-value" id="tiltInfo">-</div>
         </div>
         <div class="meta">
-          <div class="meta-label">Hedef / Fark</div>
-          <div class="meta-value" id="angleInfo">090° / -</div>
+          <div class="meta-label">Hedef Açı</div>
+          <div class="meta-value" id="angleInfo">090°</div>
         </div>
         <div class="meta">
           <div class="meta-label">Durum</div>
@@ -399,7 +400,7 @@
       </div>
 
       <div class="status" id="status">Hazır. “İzin Ver ve Başlat” ile kamera ve sensör izni birlikte istenir.</div>
-      <div class="hint">Web sayfası iPhone’da dosyayı belirli bir klasöre sessizce kaydedemez; bu sürüm dosyayı doğrudan indirmeyi dener.  [oai_citation:2‡MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/API/Window/showSaveFilePicker?utm_source=chatgpt.com)</div>
+      <div class="hint">Foto indirilmeye gönderilir. Kaydedilen foto üzerinde hedef açı, overlay ve hasta/IOL bilgileri yer alır.</div>
     </section>
   </main>
 
@@ -777,14 +778,8 @@
     }
 
     function updateAngleReadout() {
-      const roll = getCalibratedRoll();
-      const target = getTargetAngle();
-      const diff = normalizeSigned180(target - roll);
-
-      tiltInfoEl.textContent = sensorPermissionGranted ? formatSignedAngle(roll) : "-";
-      angleInfoEl.textContent = sensorPermissionGranted
-        ? `${String(target).padStart(3, "0")}° / ${formatSignedAngle(diff)}`
-        : `${String(target).padStart(3, "0")}° / -`;
+      angleInfoEl.textContent = `${String(getTargetAngle()).padStart(3, "0")}°`;
+      tiltInfoEl.textContent = sensorPermissionGranted ? formatSignedAngle(getCalibratedRoll()) : "-";
     }
 
     function calibrateZero() {
@@ -830,8 +825,6 @@
 
     function drawMetadataOnContext(ctx, width, height) {
       const target = getTargetAngle();
-      const roll = getCalibratedRoll();
-      const diff = normalizeSigned180(target - roll);
       const now = Date.now();
 
       const lines = [
@@ -839,21 +832,19 @@
         `IOL: ${iolTypeInputEl.value.trim() || "-"}`,
         `Diyoptri: ${diopterInputEl.value.trim() || "-"}`,
         `Hedef: ${String(target).padStart(3, "0")}°`,
-        `Tilt: ${sensorPermissionGranted ? formatSignedAngle(roll) : "-"}`,
-        `Fark: ${sensorPermissionGranted ? formatSignedAngle(diff) : "-"}`,
         `Kamera: ${getSelectedDeviceLabel()}`,
         `Tarih: ${formatDateTime(now)}`
       ];
 
       const padding = Math.round(width * 0.022);
-      const boxWidth = Math.round(width * 0.52);
-      const lineHeight = Math.max(24, Math.round(height * 0.035));
+      const boxWidth = Math.round(width * 0.50);
+      const lineHeight = Math.max(24, Math.round(height * 0.033));
       const boxHeight = padding * 2 + lines.length * lineHeight;
 
       ctx.save();
-      ctx.fillStyle = "rgba(0,0,0,0.42)";
+      ctx.fillStyle = "rgba(0,0,0,0.40)";
       ctx.fillRect(padding, height - boxHeight - padding, boxWidth, boxHeight);
-      ctx.strokeStyle = "rgba(255,255,255,0.22)";
+      ctx.strokeStyle = "rgba(255,255,255,0.20)";
       ctx.lineWidth = 2;
       ctx.strokeRect(padding, height - boxHeight - padding, boxWidth, boxHeight);
 
@@ -864,13 +855,14 @@
           padding + 16,
           height - boxHeight - padding + padding + index * lineHeight + lineHeight / 2,
           {
-            font: `700 ${Math.max(18, Math.round(height * 0.022))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+            font: `700 ${Math.max(18, Math.round(height * 0.021))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
             fillStyle: "rgba(255,255,255,0.96)",
             align: "left",
             baseline: "middle"
           }
         );
       });
+
       ctx.restore();
     }
 
@@ -881,17 +873,17 @@
 
       const cx = width / 2;
       const cy = height / 2;
-      const radius = Math.min(width, height) * 0.37;
+      const radius = Math.min(width, height) * 0.39;
       const ringRadius = radius;
-      const halfLineWidth = radius * 1.24;
+      const halfLineWidth = radius * 1.26;
 
       ctx.save();
       ctx.translate(cx, cy);
 
       ctx.beginPath();
       ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-      ctx.lineWidth = Math.max(3, ringRadius * 0.012);
-      ctx.strokeStyle = "rgba(255,255,255,0.48)";
+      ctx.lineWidth = Math.max(3, ringRadius * 0.013);
+      ctx.strokeStyle = "rgba(255,255,255,0.50)";
       ctx.stroke();
 
       for (let deg = 0; deg < 360; deg += 5) {
@@ -904,7 +896,7 @@
         ctx.beginPath();
         ctx.moveTo(Math.cos(rad) * tickInner, Math.sin(rad) * tickInner);
         ctx.lineTo(Math.cos(rad) * tickOuter, Math.sin(rad) * tickOuter);
-        ctx.lineWidth = isMajor ? 3.2 : isMid ? 2 : 1.2;
+        ctx.lineWidth = isMajor ? 3.4 : isMid ? 2.1 : 1.2;
         ctx.strokeStyle = isMajor ? "rgba(255,255,255,0.98)" : "rgba(255,255,255,0.42)";
         ctx.stroke();
 
@@ -923,7 +915,7 @@
       ctx.beginPath();
       ctx.moveTo(Math.cos(targetRad) * ringRadius * 0.98, Math.sin(targetRad) * ringRadius * 0.98);
       ctx.lineTo(Math.cos(oppositeRad) * ringRadius * 0.98, Math.sin(oppositeRad) * ringRadius * 0.98);
-      ctx.lineWidth = Math.max(5, ringRadius * 0.02);
+      ctx.lineWidth = Math.max(5, ringRadius * 0.021);
       ctx.strokeStyle = "rgba(77,163,255,0.98)";
       ctx.stroke();
 
@@ -960,21 +952,9 @@
 
       ctx.restore();
 
-      const diff = normalizeSigned180(targetDeg - rollDeg);
-
-      drawText(ctx, `Tilt ${formatSignedAngle(rollDeg)}`, width / 2, height * 0.10, {
-        font: "800 28px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
-        fillStyle: "rgba(240,180,41,0.98)"
-      });
-
-      drawText(ctx, `Hedef ${String(targetDeg).padStart(3, "0")}°`, width / 2, height * 0.15, {
-        font: "800 24px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
+      drawText(ctx, `Hedef ${String(targetDeg).padStart(3, "0")}°`, width / 2, height * 0.12, {
+        font: "800 26px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
         fillStyle: "rgba(77,163,255,0.98)"
-      });
-
-      drawText(ctx, `Fark ${formatSignedAngle(diff)}`, width / 2, height * 0.20, {
-        font: "800 24px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
-        fillStyle: Math.abs(diff) <= 2 ? "rgba(88,211,141,0.98)" : "rgba(255,107,107,0.98)"
       });
 
       drawText(ctx, "0° SAĞ • 90° ÜST • 180° SOL • 270° ALT", width / 2, height * 0.92, {
@@ -1017,11 +997,27 @@
       const canvas = document.createElement("canvas");
       canvas.width = width;
       canvas.height = height;
+
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Canvas alınamadı.");
 
       ctx.drawImage(videoEl, 0, 0, width, height);
-      drawOverlayOnContext(ctx, width, height, getCalibratedRoll(), getTargetAngle());
+
+      const overlayCanvas = document.createElement("canvas");
+      overlayCanvas.width = width;
+      overlayCanvas.height = height;
+      const overlayCanvasCtx = overlayCanvas.getContext("2d");
+      if (!overlayCanvasCtx) throw new Error("Overlay canvas alınamadı.");
+
+      drawOverlayOnContext(
+        overlayCanvasCtx,
+        width,
+        height,
+        getCalibratedRoll(),
+        getTargetAngle()
+      );
+
+      ctx.drawImage(overlayCanvas, 0, 0, width, height);
       drawMetadataOnContext(ctx, width, height);
 
       const blob = await new Promise((resolve, reject) => {
