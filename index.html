@@ -45,7 +45,7 @@
     .app {
       height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px);
       display: grid;
-      grid-template-rows: auto minmax(0, 55dvh) minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 56dvh) minmax(0, 1fr);
       gap: 8px;
       overflow: hidden;
     }
@@ -107,8 +107,7 @@
     }
 
     video,
-    canvas,
-    .screen-light-overlay {
+    canvas {
       position: absolute;
       inset: 0;
       width: 100%;
@@ -122,15 +121,8 @@
       z-index: 1;
     }
 
-    .screen-light-overlay {
-      z-index: 2;
-      pointer-events: none;
-      background: rgba(255,255,255,0);
-      mix-blend-mode: screen;
-    }
-
     #overlayCanvas {
-      z-index: 3;
+      z-index: 2;
       pointer-events: none;
     }
 
@@ -143,7 +135,7 @@
       justify-content: space-between;
       gap: 8px;
       pointer-events: none;
-      z-index: 4;
+      z-index: 3;
     }
 
     .pill {
@@ -188,8 +180,6 @@
       min-height: 0;
     }
 
-    .grid-2,
-    .grid-3,
     .grid-4,
     .grid-5,
     .grid-6 {
@@ -197,8 +187,6 @@
       gap: 6px;
     }
 
-    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
     .grid-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
@@ -219,13 +207,6 @@
       color: var(--text);
       padding: 0 10px;
       font-size: 13px;
-    }
-
-    input[type="range"] {
-      min-height: 28px;
-      padding: 0;
-      background: transparent;
-      border: none;
     }
 
     input[type="number"] {
@@ -270,7 +251,6 @@
     }
 
     .success { border-color: rgba(88, 211, 141, 0.45); }
-    .danger { border-color: rgba(255, 107, 107, 0.45); }
     .warning { border-color: rgba(240, 180, 41, 0.45); }
 
     .status {
@@ -284,32 +264,6 @@
       min-height: 58px;
     }
 
-    .recording {
-      border-color: rgba(255, 107, 107, 0.9) !important;
-      box-shadow:
-        0 0 0 2px rgba(255, 107, 107, 0.22),
-        inset 0 1px 0 rgba(255,255,255,0.08);
-    }
-
-    .range-wrap {
-      display: grid;
-      gap: 2px;
-    }
-
-    .range-line {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 6px;
-      align-items: center;
-    }
-
-    .range-value {
-      font-size: 11px;
-      color: var(--text);
-      min-width: 38px;
-      text-align: right;
-    }
-
     .hint {
       color: var(--muted);
       font-size: 11px;
@@ -317,8 +271,6 @@
 
     @media (max-width: 900px) {
       .preview-footer,
-      .grid-2,
-      .grid-3,
       .grid-4,
       .grid-5,
       .grid-6 {
@@ -337,18 +289,17 @@
       <div>
         <div class="badge">IOL Capture iPhone</div>
         <h1>Toric Marking Overlay</h1>
-        <div class="muted">v1.17 • Scroll yok • Açı sistemi düzeltildi</div>
+        <div class="muted">v1.18 • Yalnız foto • Direkt indirme</div>
       </div>
     </section>
 
     <section class="card preview-card">
       <div class="preview-shell">
         <video id="video" autoplay playsinline muted></video>
-        <div id="screenLightOverlay" class="screen-light-overlay"></div>
         <canvas id="overlayCanvas"></canvas>
 
         <div class="preview-head">
-          <div class="pill" id="modePill">📸 Foto</div>
+          <div class="pill">📸 Foto</div>
           <div class="pill" id="streamPill">Hazır değil</div>
         </div>
       </div>
@@ -367,16 +318,16 @@
           <div class="meta-value" id="torchInfo">-</div>
         </div>
         <div class="meta">
-          <div class="meta-label">Süre</div>
-          <div class="meta-value" id="durationInfo">00:00</div>
-        </div>
-        <div class="meta">
           <div class="meta-label">Tilt</div>
           <div class="meta-value" id="tiltInfo">-</div>
         </div>
         <div class="meta">
           <div class="meta-label">Hedef / Fark</div>
           <div class="meta-value" id="angleInfo">090° / -</div>
+        </div>
+        <div class="meta">
+          <div class="meta-label">Durum</div>
+          <div class="meta-value" id="readyInfo">Hazır</div>
         </div>
       </div>
     </section>
@@ -418,33 +369,16 @@
           </button>
         </label>
 
-        <label class="field">
-          Ekran Işığı
-          <div class="range-wrap">
-            <div class="range-line">
-              <input id="screenLightSlider" type="range" min="0" max="100" step="1" value="0" />
-              <span id="screenLightValue" class="range-value">0%</span>
-            </div>
-          </div>
-        </label>
-
         <button id="grantBtn" class="success" type="button">
           <span class="btn-icon">🔓</span>
           <span>İzin Ver ve Başlat</span>
         </button>
 
-        <button id="modeToggleBtn" type="button">
-          <span class="btn-icon" id="modeToggleIcon">📸</span>
-          <span id="modeToggleLabel">Foto Modu</span>
-        </button>
-
         <button id="captureBtn" class="success" type="button" disabled>
-          <span class="btn-icon" id="captureBtnIcon">📸</span>
-          <span id="captureBtnLabel">Foto Çek ve Kaydet</span>
+          <span class="btn-icon">📸</span>
+          <span>Foto Çek ve İndir</span>
         </button>
-      </div>
 
-      <div class="grid-5">
         <button id="calibrateBtn" type="button" class="warning" disabled>
           <span class="btn-icon">📐</span>
           <span>0° Kalibre Et</span>
@@ -454,25 +388,18 @@
           <span class="btn-icon">🔄</span>
           <span>Yenile</span>
         </button>
+      </div>
 
-        <button id="resetLightBtn" type="button">
-          <span class="btn-icon">🌕</span>
-          <span>Işığı Sıfırla</span>
-        </button>
-
-        <button id="angle90Btn" type="button">
-          <span class="btn-icon">↟</span>
-          <span>90°</span>
-        </button>
-
-        <button id="angle0Btn" type="button">
-          <span class="btn-icon">→</span>
-          <span>0°</span>
-        </button>
+      <div class="grid-5">
+        <button id="angle0Btn" type="button"><span class="btn-icon">→</span><span>0°</span></button>
+        <button id="angle90Btn" type="button"><span class="btn-icon">↟</span><span>90°</span></button>
+        <button id="angle180Btn" type="button"><span class="btn-icon">←</span><span>180°</span></button>
+        <button id="angle270Btn" type="button"><span class="btn-icon">↡</span><span>270°</span></button>
+        <button id="resetAngleBtn" type="button"><span class="btn-icon">🎯</span><span>90° Yap</span></button>
       </div>
 
       <div class="status" id="status">Hazır. “İzin Ver ve Başlat” ile kamera ve sensör izni birlikte istenir.</div>
-      <div class="hint">Sensör izni sayfa açılır açılmaz otomatik alınamaz; iPhone/Safari bunu kullanıcı etkileşimi içinden ister.  [oai_citation:2‡MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/API/Device_orientation_events?utm_source=chatgpt.com)</div>
+      <div class="hint">Web sayfası iPhone’da dosyayı belirli bir klasöre sessizce kaydedemez; bu sürüm dosyayı doğrudan indirmeyi dener.  [oai_citation:2‡MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/API/Window/showSaveFilePicker?utm_source=chatgpt.com)</div>
     </section>
   </main>
 
@@ -480,7 +407,6 @@
     const videoEl = document.getElementById("video");
     const overlayCanvasEl = document.getElementById("overlayCanvas");
     const overlayCtx = overlayCanvasEl.getContext("2d");
-    const screenLightOverlayEl = document.getElementById("screenLightOverlay");
 
     const patientNameInputEl = document.getElementById("patientNameInput");
     const iolTypeInputEl = document.getElementById("iolTypeInput");
@@ -489,58 +415,46 @@
     const videoDeviceEl = document.getElementById("videoDevice");
 
     const grantBtnEl = document.getElementById("grantBtn");
-    const modeToggleBtnEl = document.getElementById("modeToggleBtn");
-    const modeToggleIconEl = document.getElementById("modeToggleIcon");
-    const modeToggleLabelEl = document.getElementById("modeToggleLabel");
     const captureBtnEl = document.getElementById("captureBtn");
-    const captureBtnIconEl = document.getElementById("captureBtnIcon");
-    const captureBtnLabelEl = document.getElementById("captureBtnLabel");
     const refreshBtnEl = document.getElementById("refreshBtn");
-
     const torchBtnEl = document.getElementById("torchBtn");
     const torchIconEl = document.getElementById("torchIcon");
     const torchLabelEl = document.getElementById("torchLabel");
-
     const calibrateBtnEl = document.getElementById("calibrateBtn");
-    const screenLightSliderEl = document.getElementById("screenLightSlider");
-    const screenLightValueEl = document.getElementById("screenLightValue");
-    const resetLightBtnEl = document.getElementById("resetLightBtn");
-    const angle90BtnEl = document.getElementById("angle90Btn");
+
     const angle0BtnEl = document.getElementById("angle0Btn");
+    const angle90BtnEl = document.getElementById("angle90Btn");
+    const angle180BtnEl = document.getElementById("angle180Btn");
+    const angle270BtnEl = document.getElementById("angle270Btn");
+    const resetAngleBtnEl = document.getElementById("resetAngleBtn");
 
     const statusEl = document.getElementById("status");
     const deviceInfoEl = document.getElementById("deviceInfo");
     const resolutionInfoEl = document.getElementById("resolutionInfo");
     const torchInfoEl = document.getElementById("torchInfo");
-    const durationInfoEl = document.getElementById("durationInfo");
     const tiltInfoEl = document.getElementById("tiltInfo");
     const angleInfoEl = document.getElementById("angleInfo");
-    const modePillEl = document.getElementById("modePill");
+    const readyInfoEl = document.getElementById("readyInfo");
     const streamPillEl = document.getElementById("streamPill");
 
     let currentStream = null;
     let currentTrack = null;
     let permissionGranted = false;
-
-    let captureMode = "photo";
     let torchSupported = false;
     let torchEnabled = false;
-
-    let mediaRecorder = null;
-    let recordedChunks = [];
-    let recordingStartedAt = null;
-    let recordingTimerId = null;
-    let selectedRecordingMimeType = "";
 
     let sensorPermissionGranted = false;
     let sensorListening = false;
     let currentRoll = 0;
     let zeroOffset = 0;
     let overlayAnimationId = null;
-    let screenLightPercent = 0;
 
     function setStatus(message) {
       statusEl.textContent = message;
+    }
+
+    function setReadyInfo(text) {
+      readyInfoEl.textContent = text;
     }
 
     function pad2(value) {
@@ -574,9 +488,20 @@
       return clampAngle360(Math.round(raw));
     }
 
+    function setTargetAngle(angle) {
+      targetAngleInputEl.value = String(clampAngle360(angle));
+      updateAngleReadout();
+      drawOverlay();
+    }
+
     function createTimeStampFilePart(timestamp) {
       const d = new Date(timestamp);
       return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}_${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
+    }
+
+    function formatDateTime(timestamp) {
+      const d = new Date(timestamp);
+      return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
     }
 
     function sanitizePart(value, fallback = "x") {
@@ -604,20 +529,6 @@
       return `${name}_${iol}_${diopter}_${angle}deg`;
     }
 
-    function updateModeUi() {
-      const isVideo = captureMode === "video";
-      const isRecording = Boolean(mediaRecorder && mediaRecorder.state === "recording");
-
-      modeToggleIconEl.textContent = isVideo ? "🎥" : "📸";
-      modeToggleLabelEl.textContent = isVideo ? "Video Modu" : "Foto Modu";
-      captureBtnIconEl.textContent = isVideo ? (isRecording ? "⏹️" : "🎥") : "📸";
-      captureBtnLabelEl.textContent = isVideo
-        ? (isRecording ? "Videoyu Bitir ve Kaydet" : "Video Başlat")
-        : "Foto Çek ve Kaydet";
-      modePillEl.textContent = isVideo ? "🎥 Video" : "📸 Foto";
-      captureBtnEl.classList.toggle("recording", isRecording);
-    }
-
     function updateTorchUi() {
       if (!torchSupported) {
         torchInfoEl.textContent = "Destek yok";
@@ -633,47 +544,17 @@
       torchBtnEl.disabled = !currentTrack;
     }
 
-    function updateScreenLightUi() {
-      screenLightValueEl.textContent = `${screenLightPercent}%`;
-      const alpha = Math.min(0.65, (screenLightPercent / 100) * 0.65);
-      screenLightOverlayEl.style.background = `rgba(255,255,255,${alpha})`;
-    }
-
     function updateUiState() {
       const hasStream = Boolean(currentStream);
-      const isRecording = Boolean(mediaRecorder && mediaRecorder.state === "recording");
 
       captureBtnEl.disabled = !hasStream;
-      refreshBtnEl.disabled = !permissionGranted || isRecording;
-      videoDeviceEl.disabled = !permissionGranted || isRecording;
-      modeToggleBtnEl.disabled = isRecording;
+      refreshBtnEl.disabled = !permissionGranted;
+      videoDeviceEl.disabled = !permissionGranted;
       grantBtnEl.disabled = permissionGranted && hasStream;
       calibrateBtnEl.disabled = !sensorPermissionGranted;
 
       streamPillEl.textContent = hasStream ? "Canlı" : "Kapalı";
-      updateModeUi();
       updateTorchUi();
-      updateScreenLightUi();
-    }
-
-    function setDurationLabel(ms = 0) {
-      const totalSec = Math.floor(ms / 1000);
-      durationInfoEl.textContent = `${pad2(Math.floor(totalSec / 60))}:${pad2(totalSec % 60)}`;
-    }
-
-    function startRecordingTimer() {
-      stopRecordingTimer();
-      recordingStartedAt = Date.now();
-      recordingTimerId = window.setInterval(() => {
-        setDurationLabel(Date.now() - recordingStartedAt);
-      }, 250);
-    }
-
-    function stopRecordingTimer() {
-      if (recordingTimerId !== null) {
-        clearInterval(recordingTimerId);
-        recordingTimerId = null;
-      }
     }
 
     function cleanupStream() {
@@ -688,50 +569,14 @@
       streamPillEl.textContent = "Kapalı";
       deviceInfoEl.textContent = "-";
       resolutionInfoEl.textContent = "-";
-      setDurationLabel(0);
+      setReadyInfo("Hazır");
     }
 
     function getSelectedDeviceLabel() {
       return videoDeviceEl.options[videoDeviceEl.selectedIndex]?.textContent ?? "-";
     }
 
-    function pickSupportedVideoMimeType() {
-      const types = [
-        "video/mp4;codecs=hvc1,mp4a.40.2",
-        "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
-        "video/mp4;codecs=avc1,mp4a.40.2",
-        "video/mp4",
-        "video/webm;codecs=vp9,opus",
-        "video/webm;codecs=vp8,opus",
-        "video/webm"
-      ];
-
-      for (const type of types) {
-        if (window.MediaRecorder && MediaRecorder.isTypeSupported(type)) {
-          return type;
-        }
-      }
-      return "";
-    }
-
-    async function shareOrDownloadFile(file) {
-      if (navigator.share && navigator.canShare) {
-        try {
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: file.name
-            });
-            return;
-          }
-        } catch (error) {
-          if (error && error.name === "AbortError") {
-            setStatus("Paylaşım iptal edildi.");
-            return;
-          }
-        }
-      }
-
+    async function directDownloadFile(file) {
       const url = URL.createObjectURL(file);
       const a = document.createElement("a");
       a.href = url;
@@ -754,7 +599,6 @@
 
       tempStream.getTracks().forEach(track => track.stop());
       permissionGranted = true;
-      selectedRecordingMimeType = pickSupportedVideoMimeType();
     }
 
     async function requestSensorPermissionFromGesture() {
@@ -805,11 +649,7 @@
       const previousIndex = videoInputs.findIndex(item => item.deviceId === previous);
 
       videoDeviceEl.selectedIndex =
-        previousIndex >= 0
-          ? previousIndex
-          : preferredIndex >= 0
-            ? preferredIndex
-            : 0;
+        previousIndex >= 0 ? previousIndex : preferredIndex >= 0 ? preferredIndex : 0;
     }
 
     function waitForVideoReady(video) {
@@ -839,10 +679,6 @@
     async function startSelectedCamera() {
       const deviceId = videoDeviceEl.value;
       if (!deviceId) throw new Error("Önce kamera seç.");
-
-      if (mediaRecorder && mediaRecorder.state === "recording") {
-        throw new Error("Kayıt sürerken kamera değiştirilemez.");
-      }
 
       cleanupStream();
 
@@ -875,6 +711,7 @@
 
       await detectTorchSupport(currentTrack);
 
+      setReadyInfo("Canlı");
       setStatus(`Canlı görüntü başladı.\nKamera: ${getSelectedDeviceLabel()}\nÇözünürlük: ${resolutionInfoEl.textContent}`);
       updateUiState();
       resizeOverlayCanvas();
@@ -892,117 +729,6 @@
       torchEnabled = nextState;
       updateTorchUi();
       setStatus(torchEnabled ? "Torch açıldı." : "Torch kapatıldı.");
-    }
-
-    async function capturePhotoAndSave() {
-      if (!currentStream) throw new Error("Önce kamera açılmalı.");
-
-      const width = videoEl.videoWidth;
-      const height = videoEl.videoHeight;
-      if (!width || !height) throw new Error("Video hazır değil.");
-
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Canvas alınamadı.");
-
-      ctx.drawImage(videoEl, 0, 0, width, height);
-
-      if (screenLightPercent > 0) {
-        const alpha = Math.min(0.65, (screenLightPercent / 100) * 0.65);
-        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-        ctx.fillRect(0, 0, width, height);
-      }
-
-      const overlayRendered = document.createElement("canvas");
-      overlayRendered.width = width;
-      overlayRendered.height = height;
-      const overlayRenderedCtx = overlayRendered.getContext("2d");
-      drawOverlayOnContext(overlayRenderedCtx, width, height, getCalibratedRoll(), getTargetAngle());
-      ctx.drawImage(overlayRendered, 0, 0, width, height);
-
-      const blob = await new Promise((resolve, reject) => {
-        canvas.toBlob(result => {
-          if (!result) {
-            reject(new Error("PNG üretilemedi."));
-            return;
-          }
-          resolve(result);
-        }, "image/png");
-      });
-
-      const fileName = `${getOutputBaseName()}_${createTimeStampFilePart(Date.now())}.png`;
-      const file = new File([blob], fileName, { type: "image/png" });
-
-      await shareOrDownloadFile(file);
-      setStatus(`Foto kaydedildi.\nDosya: ${fileName}`);
-    }
-
-    async function startVideoRecording() {
-      if (!currentStream) throw new Error("Önce kamera açılmalı.");
-      if (!window.MediaRecorder) throw new Error("Video kayıt desteklenmiyor.");
-      if (!selectedRecordingMimeType) throw new Error("Uygun video formatı bulunamadı.");
-
-      recordedChunks = [];
-      mediaRecorder = new MediaRecorder(currentStream, { mimeType: selectedRecordingMimeType });
-
-      mediaRecorder.addEventListener("dataavailable", event => {
-        if (event.data && event.data.size > 0) {
-          recordedChunks.push(event.data);
-        }
-      });
-
-      mediaRecorder.addEventListener("error", event => {
-        const message = event.error?.message || "MediaRecorder hatası";
-        setStatus(`Hata:\n${message}`);
-      });
-
-      mediaRecorder.start(500);
-      startRecordingTimer();
-      updateUiState();
-      setStatus("Video kaydı başladı.");
-    }
-
-    async function stopVideoRecordingAndSave() {
-      if (!mediaRecorder || mediaRecorder.state !== "recording") return;
-
-      const recorder = mediaRecorder;
-
-      await new Promise(resolve => {
-        recorder.addEventListener("stop", resolve, { once: true });
-        recorder.stop();
-      });
-
-      stopRecordingTimer();
-
-      const mimeType = selectedRecordingMimeType || recorder.mimeType || "video/mp4";
-      const extension = mimeType.includes("webm") ? "webm" : "mp4";
-      const blob = new Blob(recordedChunks, { type: mimeType });
-      const fileName = `${getOutputBaseName()}_${createTimeStampFilePart(Date.now())}.${extension}`;
-      const file = new File([blob], fileName, { type: mimeType });
-
-      mediaRecorder = null;
-      recordedChunks = [];
-      updateUiState();
-
-      await shareOrDownloadFile(file);
-      setStatus(`Video kaydedildi.\nDosya: ${fileName}`);
-      setDurationLabel(0);
-    }
-
-    async function handleCaptureAction() {
-      if (captureMode === "photo") {
-        await capturePhotoAndSave();
-        return;
-      }
-
-      if (mediaRecorder && mediaRecorder.state === "recording") {
-        await stopVideoRecordingAndSave();
-        return;
-      }
-
-      await startVideoRecording();
     }
 
     function getScreenAngle() {
@@ -1095,10 +821,56 @@
       ctx.textAlign = align;
       ctx.textBaseline = baseline;
       if (shadow) {
-        ctx.shadowColor = "rgba(0,0,0,0.65)";
-        ctx.shadowBlur = 6;
+        ctx.shadowColor = "rgba(0,0,0,0.75)";
+        ctx.shadowBlur = 8;
       }
       ctx.fillText(text, x, y);
+      ctx.restore();
+    }
+
+    function drawMetadataOnContext(ctx, width, height) {
+      const target = getTargetAngle();
+      const roll = getCalibratedRoll();
+      const diff = normalizeSigned180(target - roll);
+      const now = Date.now();
+
+      const lines = [
+        `İsim: ${patientNameInputEl.value.trim() || "-"}`,
+        `IOL: ${iolTypeInputEl.value.trim() || "-"}`,
+        `Diyoptri: ${diopterInputEl.value.trim() || "-"}`,
+        `Hedef: ${String(target).padStart(3, "0")}°`,
+        `Tilt: ${sensorPermissionGranted ? formatSignedAngle(roll) : "-"}`,
+        `Fark: ${sensorPermissionGranted ? formatSignedAngle(diff) : "-"}`,
+        `Kamera: ${getSelectedDeviceLabel()}`,
+        `Tarih: ${formatDateTime(now)}`
+      ];
+
+      const padding = Math.round(width * 0.022);
+      const boxWidth = Math.round(width * 0.52);
+      const lineHeight = Math.max(24, Math.round(height * 0.035));
+      const boxHeight = padding * 2 + lines.length * lineHeight;
+
+      ctx.save();
+      ctx.fillStyle = "rgba(0,0,0,0.42)";
+      ctx.fillRect(padding, height - boxHeight - padding, boxWidth, boxHeight);
+      ctx.strokeStyle = "rgba(255,255,255,0.22)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(padding, height - boxHeight - padding, boxWidth, boxHeight);
+
+      lines.forEach((line, index) => {
+        drawText(
+          ctx,
+          line,
+          padding + 16,
+          height - boxHeight - padding + padding + index * lineHeight + lineHeight / 2,
+          {
+            font: `700 ${Math.max(18, Math.round(height * 0.022))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+            fillStyle: "rgba(255,255,255,0.96)",
+            align: "left",
+            baseline: "middle"
+          }
+        );
+      });
       ctx.restore();
     }
 
@@ -1109,17 +881,17 @@
 
       const cx = width / 2;
       const cy = height / 2;
-      const radius = Math.min(width, height) * 0.33;
+      const radius = Math.min(width, height) * 0.37;
       const ringRadius = radius;
-      const halfLineWidth = radius * 1.18;
+      const halfLineWidth = radius * 1.24;
 
       ctx.save();
       ctx.translate(cx, cy);
 
       ctx.beginPath();
       ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-      ctx.lineWidth = Math.max(2, ringRadius * 0.01);
-      ctx.strokeStyle = "rgba(255,255,255,0.40)";
+      ctx.lineWidth = Math.max(3, ringRadius * 0.012);
+      ctx.strokeStyle = "rgba(255,255,255,0.48)";
       ctx.stroke();
 
       for (let deg = 0; deg < 360; deg += 5) {
@@ -1127,20 +899,20 @@
         const isMajor = deg % 30 === 0;
         const isMid = deg % 10 === 0;
         const tickOuter = ringRadius;
-        const tickInner = ringRadius - (isMajor ? ringRadius * 0.09 : isMid ? ringRadius * 0.06 : ringRadius * 0.03);
+        const tickInner = ringRadius - (isMajor ? ringRadius * 0.11 : isMid ? ringRadius * 0.075 : ringRadius * 0.04);
 
         ctx.beginPath();
         ctx.moveTo(Math.cos(rad) * tickInner, Math.sin(rad) * tickInner);
         ctx.lineTo(Math.cos(rad) * tickOuter, Math.sin(rad) * tickOuter);
-        ctx.lineWidth = isMajor ? 2.5 : isMid ? 1.7 : 1;
-        ctx.strokeStyle = isMajor ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.45)";
+        ctx.lineWidth = isMajor ? 3.2 : isMid ? 2 : 1.2;
+        ctx.strokeStyle = isMajor ? "rgba(255,255,255,0.98)" : "rgba(255,255,255,0.42)";
         ctx.stroke();
 
         if (isMajor) {
-          const labelRadius = ringRadius - ringRadius * 0.15;
+          const labelRadius = ringRadius - ringRadius * 0.17;
           drawText(ctx, String(deg), Math.cos(rad) * labelRadius, Math.sin(rad) * labelRadius, {
-            font: `700 ${Math.max(10, ringRadius * 0.07)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
-            fillStyle: "rgba(255,255,255,0.95)"
+            font: `800 ${Math.max(14, ringRadius * 0.09)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+            fillStyle: "rgba(255,255,255,0.98)"
           });
         }
       }
@@ -1149,10 +921,10 @@
       const oppositeRad = angleToCanvasRad(clampAngle360(targetDeg + 180));
 
       ctx.beginPath();
-      ctx.moveTo(Math.cos(targetRad) * ringRadius * 0.94, Math.sin(targetRad) * ringRadius * 0.94);
-      ctx.lineTo(Math.cos(oppositeRad) * ringRadius * 0.94, Math.sin(oppositeRad) * ringRadius * 0.94);
-      ctx.lineWidth = Math.max(3, ringRadius * 0.015);
-      ctx.strokeStyle = "rgba(77,163,255,0.95)";
+      ctx.moveTo(Math.cos(targetRad) * ringRadius * 0.98, Math.sin(targetRad) * ringRadius * 0.98);
+      ctx.lineTo(Math.cos(oppositeRad) * ringRadius * 0.98, Math.sin(oppositeRad) * ringRadius * 0.98);
+      ctx.lineWidth = Math.max(5, ringRadius * 0.02);
+      ctx.strokeStyle = "rgba(77,163,255,0.98)";
       ctx.stroke();
 
       ctx.save();
@@ -1161,53 +933,53 @@
       ctx.beginPath();
       ctx.moveTo(-halfLineWidth, 0);
       ctx.lineTo(halfLineWidth, 0);
-      ctx.lineWidth = Math.max(4, ringRadius * 0.02);
-      ctx.strokeStyle = "rgba(240,180,41,0.95)";
+      ctx.lineWidth = Math.max(6, ringRadius * 0.024);
+      ctx.strokeStyle = "rgba(240,180,41,0.98)";
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.moveTo(-ringRadius * 0.16, 0);
-      ctx.lineTo(ringRadius * 0.16, 0);
-      ctx.lineWidth = Math.max(6, ringRadius * 0.03);
-      ctx.strokeStyle = "rgba(88,211,141,0.95)";
+      ctx.moveTo(-ringRadius * 0.18, 0);
+      ctx.lineTo(ringRadius * 0.18, 0);
+      ctx.lineWidth = Math.max(10, ringRadius * 0.04);
+      ctx.strokeStyle = "rgba(88,211,141,0.98)";
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.moveTo(0, -ringRadius * 0.24);
-      ctx.lineTo(0, ringRadius * 0.24);
-      ctx.lineWidth = Math.max(3, ringRadius * 0.012);
-      ctx.strokeStyle = "rgba(255,255,255,0.92)";
+      ctx.moveTo(0, -ringRadius * 0.28);
+      ctx.lineTo(0, ringRadius * 0.28);
+      ctx.lineWidth = Math.max(4, ringRadius * 0.018);
+      ctx.strokeStyle = "rgba(255,255,255,0.96)";
       ctx.stroke();
 
       ctx.restore();
 
       ctx.beginPath();
-      ctx.arc(0, 0, Math.max(4, ringRadius * 0.025), 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255,255,255,0.95)";
+      ctx.arc(0, 0, Math.max(6, ringRadius * 0.03), 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,255,255,0.98)";
       ctx.fill();
 
       ctx.restore();
 
       const diff = normalizeSigned180(targetDeg - rollDeg);
 
-      drawText(ctx, `Tilt ${formatSignedAngle(rollDeg)}`, width / 2, height * 0.14, {
-        font: "700 18px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
+      drawText(ctx, `Tilt ${formatSignedAngle(rollDeg)}`, width / 2, height * 0.10, {
+        font: "800 28px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
         fillStyle: "rgba(240,180,41,0.98)"
       });
 
-      drawText(ctx, `Hedef ${String(targetDeg).padStart(3, "0")}°`, width / 2, height * 0.20, {
-        font: "700 16px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
+      drawText(ctx, `Hedef ${String(targetDeg).padStart(3, "0")}°`, width / 2, height * 0.15, {
+        font: "800 24px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
         fillStyle: "rgba(77,163,255,0.98)"
       });
 
-      drawText(ctx, `Fark ${formatSignedAngle(diff)}`, width / 2, height * 0.26, {
-        font: "700 16px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
+      drawText(ctx, `Fark ${formatSignedAngle(diff)}`, width / 2, height * 0.20, {
+        font: "800 24px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
         fillStyle: Math.abs(diff) <= 2 ? "rgba(88,211,141,0.98)" : "rgba(255,107,107,0.98)"
       });
 
-      drawText(ctx, "0° SAĞ • 90° ÜST • 180° SOL • 270° ALT", width / 2, height * 0.86, {
-        font: "700 12px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
-        fillStyle: "rgba(255,255,255,0.90)"
+      drawText(ctx, "0° SAĞ • 90° ÜST • 180° SOL • 270° ALT", width / 2, height * 0.92, {
+        font: "800 18px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
+        fillStyle: "rgba(255,255,255,0.95)"
       });
     }
 
@@ -1233,6 +1005,40 @@
       };
 
       loop();
+    }
+
+    async function capturePhotoAndDownload() {
+      if (!currentStream) throw new Error("Önce kamera açılmalı.");
+
+      const width = videoEl.videoWidth;
+      const height = videoEl.videoHeight;
+      if (!width || !height) throw new Error("Video hazır değil.");
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas alınamadı.");
+
+      ctx.drawImage(videoEl, 0, 0, width, height);
+      drawOverlayOnContext(ctx, width, height, getCalibratedRoll(), getTargetAngle());
+      drawMetadataOnContext(ctx, width, height);
+
+      const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(result => {
+          if (!result) {
+            reject(new Error("PNG üretilemedi."));
+            return;
+          }
+          resolve(result);
+        }, "image/png");
+      });
+
+      const fileName = `${getOutputBaseName()}_${createTimeStampFilePart(Date.now())}.png`;
+      const file = new File([blob], fileName, { type: "image/png" });
+
+      await directDownloadFile(file);
+      setStatus(`Foto indirilmeye gönderildi.\nDosya: ${fileName}`);
     }
 
     grantBtnEl.addEventListener("click", async () => {
@@ -1272,16 +1078,9 @@
       }
     });
 
-    modeToggleBtnEl.addEventListener("click", () => {
-      if (mediaRecorder && mediaRecorder.state === "recording") return;
-      captureMode = captureMode === "photo" ? "video" : "photo";
-      updateUiState();
-      setStatus(captureMode === "photo" ? "Foto modu seçildi." : "Video modu seçildi.");
-    });
-
     captureBtnEl.addEventListener("click", async () => {
       try {
-        await handleCaptureAction();
+        await capturePhotoAndDownload();
       } catch (error) {
         setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
       }
@@ -1304,29 +1103,11 @@
       drawOverlay();
     });
 
-    screenLightSliderEl.addEventListener("input", () => {
-      screenLightPercent = Number(screenLightSliderEl.value) || 0;
-      updateScreenLightUi();
-    });
-
-    resetLightBtnEl.addEventListener("click", () => {
-      screenLightPercent = 0;
-      screenLightSliderEl.value = "0";
-      updateScreenLightUi();
-      setStatus("Ekran ışığı sıfırlandı.");
-    });
-
-    angle90BtnEl.addEventListener("click", () => {
-      targetAngleInputEl.value = "90";
-      updateAngleReadout();
-      drawOverlay();
-    });
-
-    angle0BtnEl.addEventListener("click", () => {
-      targetAngleInputEl.value = "0";
-      updateAngleReadout();
-      drawOverlay();
-    });
+    angle0BtnEl.addEventListener("click", () => setTargetAngle(0));
+    angle90BtnEl.addEventListener("click", () => setTargetAngle(90));
+    angle180BtnEl.addEventListener("click", () => setTargetAngle(180));
+    angle270BtnEl.addEventListener("click", () => setTargetAngle(270));
+    resetAngleBtnEl.addEventListener("click", () => setTargetAngle(90));
 
     window.addEventListener("resize", () => {
       drawOverlay();
@@ -1341,7 +1122,6 @@
     });
 
     window.addEventListener("beforeunload", () => {
-      stopRecordingTimer();
       cleanupStream();
       if (sensorListening) {
         window.removeEventListener("deviceorientation", handleOrientation, true);
@@ -1352,7 +1132,6 @@
     });
 
     updateUiState();
-    updateScreenLightUi();
     updateAngleReadout();
     drawOverlay();
     startOverlayLoop();
