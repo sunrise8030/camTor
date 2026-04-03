@@ -15,7 +15,6 @@
       --muted: #a6b0c0;
       --success: #58d38d;
       --warning: #f0b429;
-      --danger: #ff6b6b;
     }
 
     * {
@@ -153,15 +152,13 @@
     }
 
     .grid-4,
-    .grid-5,
-    .grid-6 {
+    .grid-5 {
       display: grid;
       gap: 6px;
     }
 
     .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-    .grid-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 
     label.field {
       display: grid;
@@ -172,13 +169,13 @@
 
     input, select, button {
       width: 100%;
-      min-height: 40px;
+      min-height: 42px;
       border-radius: 12px;
       border: 1px solid var(--border);
       background: #0f141b;
       color: var(--text);
       padding: 0 10px;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     input[type="number"] {
@@ -224,7 +221,17 @@
 
     .success { border-color: rgba(88, 211, 141, 0.45); }
     .warning { border-color: rgba(240, 180, 41, 0.45); }
-    .danger { border-color: rgba(255, 107, 107, 0.45); }
+
+    .capture-primary {
+      min-height: 84px;
+      font-size: 18px;
+      font-weight: 800;
+      border-radius: 16px;
+    }
+
+    .capture-primary .btn-icon {
+      font-size: 28px;
+    }
 
     .status {
       border: 1px solid var(--border);
@@ -239,8 +246,7 @@
 
     @media (max-width: 900px) {
       .grid-4,
-      .grid-5,
-      .grid-6 {
+      .grid-5 {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
@@ -252,7 +258,7 @@
       <div>
         <div class="badge">IOL Capture iPhone</div>
         <h1>Toric Marking Overlay</h1>
-        <div class="muted">v1.20 • Temiz ekran • Alt bilgi kutuları kaldırıldı</div>
+        <div class="muted">v1.21 • Minimal buton • Varsayılan açı 63</div>
       </div>
     </section>
 
@@ -287,11 +293,11 @@
 
         <label class="field">
           Hedef Açı
-          <input id="targetAngleInput" type="number" min="0" max="359" step="1" value="90" />
+          <input id="targetAngleInput" type="number" min="0" max="359" step="1" value="63" />
         </label>
       </div>
 
-      <div class="grid-6">
+      <div class="grid-5">
         <label class="field">
           Kamera
           <select id="videoDevice"></select>
@@ -310,11 +316,6 @@
           <span>İzin Ver ve Başlat</span>
         </button>
 
-        <button id="captureBtn" class="success" type="button" disabled>
-          <span class="btn-icon">📸</span>
-          <span>Foto Çek ve İndir</span>
-        </button>
-
         <button id="calibrateBtn" type="button" class="warning" disabled>
           <span class="btn-icon">📐</span>
           <span>0° Kalibre Et</span>
@@ -325,6 +326,11 @@
           <span>Yenile</span>
         </button>
       </div>
+
+      <button id="captureBtn" class="success capture-primary" type="button" disabled>
+        <span class="btn-icon">📸</span>
+        <span>Foto Çek • Paylaş / Kaydet</span>
+      </button>
 
       <div class="status" id="status">Hazır. “İzin Ver ve Başlat” ile kamera ve sensör izni birlikte istenir.</div>
     </section>
@@ -390,7 +396,7 @@
 
     function getTargetAngle() {
       const raw = Number(targetAngleInputEl.value);
-      if (!Number.isFinite(raw)) return 90;
+      if (!Number.isFinite(raw)) return 63;
       return clampAngle360(Math.round(raw));
     }
 
@@ -425,7 +431,7 @@
       const name = sanitizePart(patientNameInputEl.value, "hasta");
       const iol = sanitizePart(iolTypeInputEl.value, "IOL");
       const diopter = sanitizePart(diopterInputEl.value, "xD");
-      const angle = normalizeAngleValue(targetAngleInputEl.value) || "090";
+      const angle = normalizeAngleValue(targetAngleInputEl.value) || "063";
       return `${name}_${iol}_${diopter}_${angle}deg`;
     }
 
@@ -469,7 +475,23 @@
       return videoDeviceEl.options[videoDeviceEl.selectedIndex]?.textContent ?? "-";
     }
 
-    async function directDownloadFile(file) {
+    async function shareOrDownloadFile(file) {
+      if (navigator.share && navigator.canShare) {
+        try {
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: file.name
+            });
+            return "shared";
+          }
+        } catch (error) {
+          if (error?.name === "AbortError") {
+            return "cancelled";
+          }
+        }
+      }
+
       const url = URL.createObjectURL(file);
       const a = document.createElement("a");
       a.href = url;
@@ -478,9 +500,12 @@
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
+      return "downloaded";
     }
 
     async function requestCameraPermission() {
+      if (permissionGranted) return;
+
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error("Tarayıcı kamera erişimini desteklemiyor.");
       }
@@ -714,14 +739,14 @@
       ];
 
       const padding = Math.round(width * 0.022);
-      const boxWidth = Math.round(width * 0.50);
-      const lineHeight = Math.max(24, Math.round(height * 0.033));
+      const boxWidth = Math.round(width * 0.48);
+      const lineHeight = Math.max(24, Math.round(height * 0.032));
       const boxHeight = padding * 2 + lines.length * lineHeight;
 
       ctx.save();
-      ctx.fillStyle = "rgba(0,0,0,0.40)";
+      ctx.fillStyle = "rgba(0,0,0,0.38)";
       ctx.fillRect(padding, height - boxHeight - padding, boxWidth, boxHeight);
-      ctx.strokeStyle = "rgba(255,255,255,0.20)";
+      ctx.strokeStyle = "rgba(255,255,255,0.18)";
       ctx.lineWidth = 2;
       ctx.strokeRect(padding, height - boxHeight - padding, boxWidth, boxHeight);
 
@@ -732,7 +757,7 @@
           padding + 16,
           height - boxHeight - padding + padding + index * lineHeight + lineHeight / 2,
           {
-            font: `700 ${Math.max(18, Math.round(height * 0.021))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+            font: `700 ${Math.max(18, Math.round(height * 0.02))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
             fillStyle: "rgba(255,255,255,0.96)",
             align: "left",
             baseline: "middle"
@@ -750,17 +775,17 @@
 
       const cx = width / 2;
       const cy = height / 2;
-      const radius = Math.min(width, height) * 0.39;
+      const radius = Math.min(width, height) * 0.33;
       const ringRadius = radius;
-      const halfLineWidth = radius * 1.26;
+      const halfLineWidth = radius * 1.14;
 
       ctx.save();
       ctx.translate(cx, cy);
 
       ctx.beginPath();
       ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-      ctx.lineWidth = Math.max(3, ringRadius * 0.013);
-      ctx.strokeStyle = "rgba(255,255,255,0.50)";
+      ctx.lineWidth = Math.max(2.5, ringRadius * 0.011);
+      ctx.strokeStyle = "rgba(255,255,255,0.46)";
       ctx.stroke();
 
       for (let deg = 0; deg < 360; deg += 5) {
@@ -768,20 +793,20 @@
         const isMajor = deg % 30 === 0;
         const isMid = deg % 10 === 0;
         const tickOuter = ringRadius;
-        const tickInner = ringRadius - (isMajor ? ringRadius * 0.11 : isMid ? ringRadius * 0.075 : ringRadius * 0.04);
+        const tickInner = ringRadius - (isMajor ? ringRadius * 0.10 : isMid ? ringRadius * 0.065 : ringRadius * 0.035);
 
         ctx.beginPath();
         ctx.moveTo(Math.cos(rad) * tickInner, Math.sin(rad) * tickInner);
         ctx.lineTo(Math.cos(rad) * tickOuter, Math.sin(rad) * tickOuter);
-        ctx.lineWidth = isMajor ? 3.4 : isMid ? 2.1 : 1.2;
-        ctx.strokeStyle = isMajor ? "rgba(255,255,255,0.98)" : "rgba(255,255,255,0.42)";
+        ctx.lineWidth = isMajor ? 3 : isMid ? 1.9 : 1.1;
+        ctx.strokeStyle = isMajor ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.38)";
         ctx.stroke();
 
         if (isMajor) {
-          const labelRadius = ringRadius - ringRadius * 0.17;
+          const labelRadius = ringRadius - ringRadius * 0.16;
           drawText(ctx, String(deg), Math.cos(rad) * labelRadius, Math.sin(rad) * labelRadius, {
-            font: `800 ${Math.max(14, ringRadius * 0.09)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
-            fillStyle: "rgba(255,255,255,0.98)"
+            font: `800 ${Math.max(12, ringRadius * 0.085)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+            fillStyle: "rgba(255,255,255,0.97)"
           });
         }
       }
@@ -792,7 +817,7 @@
       ctx.beginPath();
       ctx.moveTo(Math.cos(targetRad) * ringRadius * 0.98, Math.sin(targetRad) * ringRadius * 0.98);
       ctx.lineTo(Math.cos(oppositeRad) * ringRadius * 0.98, Math.sin(oppositeRad) * ringRadius * 0.98);
-      ctx.lineWidth = Math.max(5, ringRadius * 0.021);
+      ctx.lineWidth = Math.max(4, ringRadius * 0.018);
       ctx.strokeStyle = "rgba(77,163,255,0.98)";
       ctx.stroke();
 
@@ -802,35 +827,35 @@
       ctx.beginPath();
       ctx.moveTo(-halfLineWidth, 0);
       ctx.lineTo(halfLineWidth, 0);
-      ctx.lineWidth = Math.max(6, ringRadius * 0.024);
+      ctx.lineWidth = Math.max(5, ringRadius * 0.022);
       ctx.strokeStyle = "rgba(240,180,41,0.98)";
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.moveTo(-ringRadius * 0.18, 0);
-      ctx.lineTo(ringRadius * 0.18, 0);
-      ctx.lineWidth = Math.max(10, ringRadius * 0.04);
+      ctx.moveTo(-ringRadius * 0.16, 0);
+      ctx.lineTo(ringRadius * 0.16, 0);
+      ctx.lineWidth = Math.max(8, ringRadius * 0.034);
       ctx.strokeStyle = "rgba(88,211,141,0.98)";
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.moveTo(0, -ringRadius * 0.28);
-      ctx.lineTo(0, ringRadius * 0.28);
-      ctx.lineWidth = Math.max(4, ringRadius * 0.018);
+      ctx.moveTo(0, -ringRadius * 0.24);
+      ctx.lineTo(0, ringRadius * 0.24);
+      ctx.lineWidth = Math.max(3.5, ringRadius * 0.016);
       ctx.strokeStyle = "rgba(255,255,255,0.96)";
       ctx.stroke();
 
       ctx.restore();
 
       ctx.beginPath();
-      ctx.arc(0, 0, Math.max(6, ringRadius * 0.03), 0, Math.PI * 2);
+      ctx.arc(0, 0, Math.max(5, ringRadius * 0.026), 0, Math.PI * 2);
       ctx.fillStyle = "rgba(255,255,255,0.98)";
       ctx.fill();
 
       ctx.restore();
 
       drawText(ctx, `Hedef ${String(targetDeg).padStart(3, "0")}°`, width / 2, height * 0.12, {
-        font: "800 26px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
+        font: "800 24px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
         fillStyle: "rgba(77,163,255,0.98)"
       });
     }
@@ -859,7 +884,7 @@
       loop();
     }
 
-    async function capturePhotoAndDownload() {
+    async function capturePhoto() {
       if (!currentStream) throw new Error("Önce kamera açılmalı.");
 
       const width = videoEl.videoWidth;
@@ -905,8 +930,15 @@
       const fileName = `${getOutputBaseName()}_${createTimeStampFilePart(Date.now())}.png`;
       const file = new File([blob], fileName, { type: "image/png" });
 
-      await directDownloadFile(file);
-      setStatus(`Foto indirilmeye gönderildi.\nDosya: ${fileName}`);
+      const result = await shareOrDownloadFile(file);
+
+      if (result === "shared") {
+        setStatus(`Paylaşım penceresi açıldı.\nFotoğraflar’a kaydet seçeneğini kullanabilirsin.\nDosya: ${fileName}`);
+      } else if (result === "downloaded") {
+        setStatus(`İndirme başlatıldı.\nDosya: ${fileName}`);
+      } else {
+        setStatus("Paylaşım iptal edildi.");
+      }
     }
 
     grantBtnEl.addEventListener("click", async () => {
@@ -947,7 +979,7 @@
 
     captureBtnEl.addEventListener("click", async () => {
       try {
-        await capturePhotoAndDownload();
+        await capturePhoto();
       } catch (error) {
         setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
       }
@@ -963,6 +995,14 @@
 
     calibrateBtnEl.addEventListener("click", () => {
       calibrateZero();
+    });
+
+    targetAngleInputEl.addEventListener("focus", () => {
+      targetAngleInputEl.select();
+    });
+
+    targetAngleInputEl.addEventListener("click", () => {
+      targetAngleInputEl.select();
     });
 
     targetAngleInputEl.addEventListener("input", () => {
