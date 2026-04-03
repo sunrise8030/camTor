@@ -14,8 +14,6 @@
       --muted: #a6b0c0;
       --success: #58d38d;
       --warning: #f0b429;
-      --danger: #ff6b6b;
-      --accent: #4da3ff;
     }
 
     html {
@@ -161,6 +159,7 @@
     .span-2 { grid-column: span 2; }
     .span-3 { grid-column: span 3; }
     .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
 
     .action-grid {
       display: grid;
@@ -297,7 +296,8 @@
 
       .span-2,
       .span-3,
-      .span-4 {
+      .span-4,
+      .span-6 {
         grid-column: span 1;
       }
 
@@ -316,7 +316,7 @@
     <section class="card">
       <div class="badge">Torik IOL Marker</div>
       <h1>Torik IOL Marker</h1>
-      <div class="muted">v1.40 • Orientation öncelikli terazi • Motion fallback • Sensör watchdog</div>
+      <div class="muted">v1.41 • Orientation öncelikli terazi • Motion fallback • Axl/Hedef senkron</div>
     </section>
 
     <section class="card preview-card">
@@ -333,17 +333,17 @@
 
     <section class="card controls">
       <div class="form-grid">
-        <label class="field span-3 span-mobile-2">
+        <label class="field span-6 span-mobile-2">
           İsim
           <input id="patientNameInput" type="text" placeholder="Örn: Ahmet Yılmaz" />
         </label>
 
-        <label class="field span-2">
+        <label class="field span-6 span-mobile-2">
           IOL Tipi
           <input id="iolTypeInput" type="text" placeholder="Torik IOL" />
         </label>
 
-        <label class="field span-4 span-mobile-2">
+        <label class="field span-8 span-mobile-2">
           Refraksiyon
           <div class="compact-refractive">
             <div class="compact-cell">
@@ -361,7 +361,7 @@
           </div>
         </label>
 
-        <label class="field span-3 span-mobile-2">
+        <label class="field span-4 span-mobile-2">
           Hedef Açı
           <input id="targetAngleInput" type="number" min="0" max="180" step="1" value="63" />
         </label>
@@ -454,7 +454,6 @@
     let lastGX = 0;
     let lastGY = 0;
     let lastGZ = 0;
-    let lastAlpha = null;
     let lastBeta = null;
     let lastGamma = null;
 
@@ -542,9 +541,24 @@
       }
     }
 
+    function syncAxisFieldsFrom(source) {
+      if (source === "axl") {
+        const value = clampAxis180(axlInputEl.value || 0);
+        axlInputEl.value = String(value);
+        targetAngleInputEl.value = String(value);
+        return value;
+      }
+
+      const value = clampAxis180(targetAngleInputEl.value || 0);
+      targetAngleInputEl.value = String(value);
+      axlInputEl.value = String(value);
+      return value;
+    }
+
     function setTargetAngle(angle) {
       const normalized = clampAxis180(angle);
       targetAngleInputEl.value = String(normalized);
+      axlInputEl.value = String(normalized);
       maybeHapticOnAngle(normalized);
       drawOverlay();
     }
@@ -879,7 +893,6 @@
         return;
       }
 
-      lastAlpha = Number.isFinite(event.alpha) ? event.alpha : null;
       lastBeta = event.beta;
       lastGamma = event.gamma;
 
@@ -942,8 +955,7 @@
         const now = Date.now();
         const hasRecentSensor = now - lastSensorAt < SENSOR_TIMEOUT_MS;
 
-        if (hasRecentSensor) return;
-        if (sensorFailureShown) return;
+        if (hasRecentSensor || sensorFailureShown) return;
 
         sensorFailureShown = true;
         sensorSource = "none";
@@ -951,12 +963,10 @@
         setStatus(
           [
             "Sensör verisi gelmiyor.",
-            `kaynak=${sensorSource}`,
-            "Kontrol:",
-            "1) Sayfa HTTPS olmalı",
-            "2) iPhone/Safari ise Motion & Orientation Access açık olmalı",
-            "3) Uygulama iframe/webview içindeyse sensör engelleniyor olabilir",
-            "4) Masaüstünde test ediyorsan sensör olmayabilir"
+            "1) HTTPS gerekli",
+            "2) iPhone/Safari ise Motion & Orientation Access aç",
+            "3) WebView/iframe sensörü engelliyor olabilir",
+            "4) Masaüstünde sensör olmayabilir"
           ].join("\n")
         );
       }, 1000);
@@ -1331,8 +1341,8 @@
                 "Sensör event gelmiyor.",
                 "1) HTTPS gerekli",
                 "2) iPhone/Safari ise Motion & Orientation Access aç",
-                "3) WebView/iframe kullanıyorsan sensör engelleniyor olabilir",
-                "4) Masaüstü cihazda sensör olmayabilir"
+                "3) WebView/iframe sensör engelliyor olabilir",
+                "4) Masaüstünde sensör olmayabilir"
               ].join("\n")
             );
           } else {
@@ -1387,10 +1397,19 @@
 
     targetAngleInputEl.addEventListener("focus", () => targetAngleInputEl.select());
     targetAngleInputEl.addEventListener("click", () => targetAngleInputEl.select());
-    targetAngleInputEl.addEventListener("input", () => setTargetAngle(targetAngleInputEl.value));
+    targetAngleInputEl.addEventListener("input", () => {
+      const value = syncAxisFieldsFrom("target");
+      maybeHapticOnAngle(value);
+      drawOverlay();
+    });
 
     axlInputEl.addEventListener("focus", () => axlInputEl.select());
     axlInputEl.addEventListener("click", () => axlInputEl.select());
+    axlInputEl.addEventListener("input", () => {
+      const value = syncAxisFieldsFrom("axl");
+      maybeHapticOnAngle(value);
+      drawOverlay();
+    });
 
     previewShellEl.addEventListener("pointerdown", event => {
       const angle = eventPointToAxisAngle(event.clientX, event.clientY);
