@@ -166,8 +166,6 @@
     .span-2 { grid-column: span 2; }
     .span-3 { grid-column: span 3; }
     .span-4 { grid-column: span 4; }
-    .span-5 { grid-column: span 5; }
-    .span-6 { grid-column: span 6; }
 
     .action-grid {
       display: grid;
@@ -303,9 +301,7 @@
 
       .span-2,
       .span-3,
-      .span-4,
-      .span-5,
-      .span-6 {
+      .span-4 {
         grid-column: span 1;
       }
 
@@ -325,7 +321,7 @@
       <div>
         <div class="badge">Torik IOL Marker</div>
         <h1>Torik IOL Marker</h1>
-        <div class="muted">v1.26 • Düzen düzeltildi • Slider kaldırıldı • Gönye inceltildi</div>
+        <div class="muted">v1.27 • Gravity terazi düzeltildi • Slider yok • Halka içi sürükleme</div>
       </div>
     </section>
 
@@ -463,7 +459,7 @@
     let lastHapticStep = null;
     let lastHapticAt = 0;
 
-    const LOW_PASS_ALPHA = 0.16;
+    const LOW_PASS_ALPHA = 0.12;
     const HAPTIC_STEP_DEG = 5;
     const HAPTIC_MIN_INTERVAL_MS = 50;
 
@@ -506,7 +502,6 @@
     function maybeHapticOnAngle(angle) {
       const snapped = Math.round(angle / HAPTIC_STEP_DEG) * HAPTIC_STEP_DEG;
       const now = Date.now();
-
       if (snapped === lastHapticStep && now - lastHapticAt < HAPTIC_MIN_INTERVAL_MS) return;
 
       if (snapped !== lastHapticStep) {
@@ -634,7 +629,6 @@
 
     async function requestCameraPermission() {
       if (permissionGranted) return;
-
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error("Tarayıcı kamera erişimini desteklemiyor.");
       }
@@ -676,7 +670,6 @@
       const previous = videoDeviceEl.value;
 
       videoDeviceEl.innerHTML = "";
-
       if (!videoInputs.length) throw new Error("Kamera bulunamadı.");
 
       for (const device of videoInputs) {
@@ -708,7 +701,6 @@
     async function detectTorchSupport(track) {
       torchSupported = false;
       torchEnabled = false;
-
       if (!track?.getCapabilities) {
         updateTorchUi();
         return;
@@ -759,9 +751,7 @@
       if (!currentTrack || !torchSupported) return;
 
       const nextState = !torchEnabled;
-      await currentTrack.applyConstraints({
-        advanced: [{ torch: nextState }]
-      });
+      await currentTrack.applyConstraints({ advanced: [{ torch: nextState }] });
 
       torchEnabled = nextState;
       updateTorchUi();
@@ -800,12 +790,14 @@
       const x = Number.isFinite(g.x) ? g.x : 0;
       const y = Number.isFinite(g.y) ? g.y : 0;
 
-      gravityX = gravityX + LOW_PASS_ALPHA * (x - gravityX);
-      gravityY = gravityY + LOW_PASS_ALPHA * (y - gravityY);
+      gravityX += LOW_PASS_ALPHA * (x - gravityX);
+      gravityY += LOW_PASS_ALPHA * (y - gravityY);
 
       filteredRollDeg = computeRollFromGravity(gravityX, gravityY);
 
-      if (calibrationRunning) calibrationSamples.push(filteredRollDeg);
+      if (calibrationRunning) {
+        calibrationSamples.push(filteredRollDeg);
+      }
     }
 
     async function runCalibration() {
@@ -911,7 +903,7 @@
     }
 
     function drawOverlayOnContext(ctx, width, height, rollDeg, targetDeg) {
-      if (!ctx) return;
+      if (!ctx) return null;
 
       ctx.clearRect(0, 0, width, height);
 
@@ -1059,9 +1051,7 @@
       const innerActiveRadius = ringRadius * 0.72;
       const outerActiveRadius = ringRadius * 1.03;
 
-      if (r < innerActiveRadius || r > outerActiveRadius) {
-        return null;
-      }
+      if (r < innerActiveRadius || r > outerActiveRadius) return null;
 
       const deg360 = clampAngle360(Math.atan2(dy, dx) * 180 / Math.PI);
       return deg360 > 180 ? deg360 - 180 : deg360;
@@ -1143,7 +1133,9 @@
         await populateDevices();
         await startSelectedCamera();
         updateUiState();
-        if (motionPermissionGranted) setStatus("Kamera ve gravity motion hazır.");
+        if (motionPermissionGranted) {
+          setStatus("Kamera ve gravity motion hazır.");
+        }
       } catch (error) {
         setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
       }
@@ -1235,8 +1227,12 @@
 
     window.addEventListener("beforeunload", () => {
       cleanupStream();
-      if (motionListening) window.removeEventListener("devicemotion", handleDeviceMotion, true);
-      if (overlayAnimationId !== null) cancelAnimationFrame(overlayAnimationId);
+      if (motionListening) {
+        window.removeEventListener("devicemotion", handleDeviceMotion, true);
+      }
+      if (overlayAnimationId !== null) {
+        cancelAnimationFrame(overlayAnimationId);
+      }
     });
 
     setTargetAngle(63);
