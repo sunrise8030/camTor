@@ -3,13 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
-  <title>IOL Marking Capture</title>
+  <title>IOL Capture iPhone</title>
   <style>
     :root {
       color-scheme: dark;
       --bg: #0b0f16;
       --panel: #151b24;
-      --panel-2: #10151d;
       --border: #2a3140;
       --text: #edf2f7;
       --muted: #a6b0c0;
@@ -168,7 +167,9 @@
       font-size: 11px;
     }
 
-    input, select, button {
+    input,
+    select,
+    button {
       width: 100%;
       min-height: 42px;
       border-radius: 12px;
@@ -244,7 +245,7 @@
     .status {
       border: 1px solid var(--border);
       border-radius: 12px;
-      background: var(--panel-2);
+      background: rgba(10, 15, 23, 0.92);
       padding: 8px 10px;
       color: var(--muted);
       font-size: 12px;
@@ -262,7 +263,7 @@
     .range-value {
       font-size: 12px;
       color: var(--text);
-      min-width: 36px;
+      min-width: 44px;
       text-align: right;
     }
 
@@ -280,7 +281,7 @@
       <div>
         <div class="badge">IOL Capture iPhone</div>
         <h1>Toric Marking Overlay</h1>
-        <div class="muted">v1.22 • Slider + parmakla çevirme • 0–180 eksen</div>
+        <div class="muted">v1.23 • Gravity tabanlı • Slider + sürükleme + üstte büyük açı</div>
       </div>
     </section>
 
@@ -362,7 +363,7 @@
         <span>Foto Çek • Paylaş / Kaydet</span>
       </button>
 
-      <div class="status" id="status">Hazır. “İzin Ver ve Başlat” ile kamera ve sensör izni birlikte istenir.</div>
+      <div class="status" id="status">Hazır. “İzin Ver ve Başlat” ile kamera ve motion izni birlikte istenir.</div>
     </section>
   </main>
 
@@ -397,12 +398,26 @@
     let torchSupported = false;
     let torchEnabled = false;
 
-    let sensorPermissionGranted = false;
-    let sensorListening = false;
-    let currentRoll = 0;
-    let zeroOffset = 0;
+    let motionPermissionGranted = false;
+    let motionListening = false;
     let overlayAnimationId = null;
     let isDraggingAxis = false;
+
+    let gravityX = 0;
+    let gravityY = 0;
+    let gravityZ = 0;
+    let filteredRollDeg = 0;
+    let zeroOffsetDeg = 0;
+
+    let calibrationSamples = [];
+    let calibrationRunning = false;
+
+    let lastHapticAngle = null;
+    let lastHapticAt = 0;
+
+    const LOW_PASS_ALPHA = 0.16;
+    const HAPTIC_STEP_DEG = 2;
+    const HAPTIC_MIN_INTERVAL_MS = 35;
 
     function setStatus(message) {
       statusEl.textContent = message;
@@ -417,7 +432,7 @@
     }
 
     function clampAxis180(value) {
-      return clamp(Math.round(value), 0, 180);
+      return clamp(Math.round(Number(value) || 0), 0, 180);
     }
 
     function clampAngle360(value) {
@@ -426,20 +441,14 @@
       return result;
     }
 
-    function angleToCanvasRad(deg) {
-      return (-deg * Math.PI) / 180;
-    }
-
     function normalizeSigned180(value) {
       let result = clampAngle360(value);
       if (result > 180) result -= 360;
       return result;
     }
 
-    function getTargetAngle() {
-      const raw = Number(targetAngleInputEl.value);
-      if (!Number.isFinite(raw)) return 63;
-      return clampAxis180(raw);
+    function angleToCanvasRad(deg) {
+      return (-deg * Math.PI) / 180;
     }
 
     function setTargetAngle(angle) {
@@ -447,7 +456,30 @@
       targetAngleInputEl.value = String(normalized);
       targetAngleSliderEl.value = String(normalized);
       targetAngleSliderValueEl.textContent = `${normalized}°`;
+      maybeHapticOnAngle(normalized);
       drawOverlay();
+    }
+
+    function getTargetAngle() {
+      return clampAxis180(targetAngleInputEl.value || 63);
+    }
+
+    function maybeHapticOnAngle(angle) {
+      const snapped = Math.round(angle / HAPTIC_STEP_DEG) * HAPTIC_STEP_DEG;
+      const now = Date.now();
+      if (snapped === lastHapticAngle && now - lastHapticAt < HAPTIC_MIN_INTERVAL_MS) return;
+
+      if (snapped !== lastHapticAngle) {
+        if (navigator.vibrate) {
+          navigator.vibrate(8);
+        }
+        lastHapticAngle = snapped;
+        lastHapticAt = now;
+      }
+    }
+
+    function getCurrentRollDeg() {
+      return normalizeSigned180(filteredRollDeg - zeroOffsetDeg);
     }
 
     function createTimeStampFilePart(timestamp) {
@@ -472,16 +504,14 @@
     }
 
     function normalizeAngleValue(value) {
-      const num = Number(value);
-      if (!Number.isFinite(num)) return "";
-      return String(clampAxis180(num)).padStart(3, "0");
+      return String(clampAxis180(value)).padStart(3, "0");
     }
 
     function getOutputBaseName() {
       const name = sanitizePart(patientNameInputEl.value, "hasta");
       const iol = sanitizePart(iolTypeInputEl.value, "IOL");
       const diopter = sanitizePart(diopterInputEl.value, "xD");
-      const angle = normalizeAngleValue(targetAngleInputEl.value) || "063";
+      const angle = normalizeAngleValue(targetAngleInputEl.value || 63);
       return `${name}_${iol}_${diopter}_${angle}deg`;
     }
 
@@ -504,7 +534,7 @@
       refreshBtnEl.disabled = !permissionGranted;
       videoDeviceEl.disabled = !permissionGranted;
       grantBtnEl.disabled = permissionGranted && hasStream;
-      calibrateBtnEl.disabled = !sensorPermissionGranted;
+      calibrateBtnEl.disabled = !motionPermissionGranted || calibrationRunning;
       streamPillEl.textContent = hasStream ? "Canlı" : "Kapalı";
       updateTorchUi();
     }
@@ -536,9 +566,7 @@
             return "shared";
           }
         } catch (error) {
-          if (error?.name === "AbortError") {
-            return "cancelled";
-          }
+          if (error?.name === "AbortError") return "cancelled";
         }
       }
 
@@ -569,26 +597,26 @@
       permissionGranted = true;
     }
 
-    async function requestSensorPermissionFromGesture() {
-      if (sensorPermissionGranted) return;
+    async function requestMotionPermissionFromGesture() {
+      if (motionPermissionGranted) return;
 
-      if (typeof DeviceOrientationEvent === "undefined") {
-        throw new Error("Bu cihazda orientation sensörü erişimi yok.");
+      if (typeof DeviceMotionEvent === "undefined") {
+        throw new Error("Bu cihazda motion sensörü erişimi yok.");
       }
 
-      if (typeof DeviceOrientationEvent.requestPermission === "function") {
-        const result = await DeviceOrientationEvent.requestPermission();
+      if (typeof DeviceMotionEvent.requestPermission === "function") {
+        const result = await DeviceMotionEvent.requestPermission();
         if (result !== "granted") {
-          throw new Error("Sensör izni verilmedi.");
+          throw new Error("Motion izni verilmedi.");
         }
       }
 
-      if (!sensorListening) {
-        window.addEventListener("deviceorientation", handleOrientation, true);
-        sensorListening = true;
+      if (!motionListening) {
+        window.addEventListener("devicemotion", handleDeviceMotion, true);
+        motionListening = true;
       }
 
-      sensorPermissionGranted = true;
+      motionPermissionGranted = true;
     }
 
     async function populateDevices() {
@@ -701,44 +729,65 @@
       return 0;
     }
 
-    function computeRollFromOrientation(event) {
-      const beta = Number.isFinite(event.beta) ? event.beta : 0;
-      const gamma = Number.isFinite(event.gamma) ? event.gamma : 0;
-      const angle = getScreenAngle();
+    function computeRollFromGravity(x, y, z) {
+      const screenAngle = getScreenAngle();
+      let gx = x;
+      let gy = y;
 
-      let roll;
-      switch (angle) {
-        case 90:
-          roll = beta;
-          break;
-        case -90:
-        case 270:
-          roll = -beta;
-          break;
-        case 180:
-          roll = -gamma;
-          break;
-        default:
-          roll = gamma;
-          break;
+      if (screenAngle === 90) {
+        gx = -y;
+        gy = x;
+      } else if (screenAngle === -90 || screenAngle === 270) {
+        gx = y;
+        gy = -x;
+      } else if (screenAngle === 180) {
+        gx = -x;
+        gy = -y;
       }
 
-      if (!Number.isFinite(roll)) return 0;
-      return Math.max(-180, Math.min(180, roll));
+      return Math.atan2(gx, gy) * 180 / Math.PI;
     }
 
-    function handleOrientation(event) {
-      currentRoll = computeRollFromOrientation(event);
+    function handleDeviceMotion(event) {
+      const g = event.accelerationIncludingGravity;
+      if (!g) return;
+
+      const x = Number.isFinite(g.x) ? g.x : 0;
+      const y = Number.isFinite(g.y) ? g.y : 0;
+      const z = Number.isFinite(g.z) ? g.z : 0;
+
+      gravityX = gravityX + LOW_PASS_ALPHA * (x - gravityX);
+      gravityY = gravityY + LOW_PASS_ALPHA * (y - gravityY);
+      gravityZ = gravityZ + LOW_PASS_ALPHA * (z - gravityZ);
+
+      filteredRollDeg = computeRollFromGravity(gravityX, gravityY, gravityZ);
+
+      if (calibrationRunning) {
+        calibrationSamples.push(filteredRollDeg);
+      }
     }
 
-    function getCalibratedRoll() {
-      return normalizeSigned180(currentRoll - zeroOffset);
-    }
+    async function runCalibration() {
+      if (!motionPermissionGranted) return;
+      calibrationRunning = true;
+      updateUiState();
+      setStatus("Kalibrasyon başladı.\nTelefonu sabit tut.");
 
-    function calibrateZero() {
-      zeroOffset = currentRoll;
+      calibrationSamples = [];
+      await new Promise(resolve => setTimeout(resolve, 1200));
+
+      if (calibrationSamples.length < 5) {
+        calibrationRunning = false;
+        updateUiState();
+        throw new Error("Yeterli motion verisi alınamadı.");
+      }
+
+      const avg = calibrationSamples.reduce((sum, value) => sum + value, 0) / calibrationSamples.length;
+      zeroOffsetDeg = avg;
+      calibrationRunning = false;
+      updateUiState();
       drawOverlay();
-      setStatus("0° kalibrasyon yapıldı.");
+      setStatus("Kalibrasyon tamamlandı.");
     }
 
     function resizeOverlayCanvas() {
@@ -907,9 +956,23 @@
 
       ctx.restore();
 
-      drawText(ctx, `Hedef ${String(targetDeg).padStart(3, "0")}°`, width / 2, height * 0.12, {
-        font: "800 24px -apple-system, BlinkMacSystemFont, Segoe UI, Arial",
-        fillStyle: "rgba(77,163,255,0.98)"
+      const targetLabel = `${String(clampAxis180(targetDeg)).padStart(3, "0")}°`;
+
+      ctx.save();
+      const boxWidth = Math.max(150, width * 0.24);
+      const boxHeight = Math.max(56, height * 0.09);
+      const boxX = (width - boxWidth) / 2;
+      const boxY = Math.max(14, height * 0.028);
+      ctx.fillStyle = "rgba(0,0,0,0.34)";
+      ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+      ctx.strokeStyle = "rgba(255,255,255,0.18)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+      ctx.restore();
+
+      drawText(ctx, targetLabel, width / 2, Math.max(42, height * 0.074), {
+        font: `900 ${Math.max(34, Math.round(height * 0.06))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+        fillStyle: "rgba(77,163,255,0.99)"
       });
     }
 
@@ -919,7 +982,7 @@
         overlayCtx,
         overlayCanvasEl.width,
         overlayCanvasEl.height,
-        getCalibratedRoll(),
+        getCurrentRollDeg(),
         getTargetAngle()
       );
     }
@@ -979,7 +1042,7 @@
         overlayCanvasCtx,
         width,
         height,
-        getCalibratedRoll(),
+        getCurrentRollDeg(),
         getTargetAngle()
       );
 
@@ -1014,15 +1077,15 @@
       try {
         await requestCameraPermission();
         try {
-          await requestSensorPermissionFromGesture();
-        } catch (sensorError) {
-          setStatus(`Kamera izni verildi.\nSensör izni alınamadı: ${sensorError.message}`);
+          await requestMotionPermissionFromGesture();
+        } catch (motionError) {
+          setStatus(`Kamera izni verildi.\nMotion izni alınamadı: ${motionError.message}`);
         }
         await populateDevices();
         await startSelectedCamera();
         updateUiState();
-        if (sensorPermissionGranted) {
-          setStatus("Kamera ve sensör hazır.");
+        if (motionPermissionGranted) {
+          setStatus("Kamera ve gravity motion hazır.");
         }
       } catch (error) {
         setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
@@ -1062,8 +1125,12 @@
       }
     });
 
-    calibrateBtnEl.addEventListener("click", () => {
-      calibrateZero();
+    calibrateBtnEl.addEventListener("click", async () => {
+      try {
+        await runCalibration();
+      } catch (error) {
+        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
+      }
     });
 
     targetAngleInputEl.addEventListener("focus", () => {
@@ -1115,8 +1182,8 @@
 
     window.addEventListener("beforeunload", () => {
       cleanupStream();
-      if (sensorListening) {
-        window.removeEventListener("deviceorientation", handleOrientation, true);
+      if (motionListening) {
+        window.removeEventListener("devicemotion", handleDeviceMotion, true);
       }
       if (overlayAnimationId !== null) {
         cancelAnimationFrame(overlayAnimationId);
