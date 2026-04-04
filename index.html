@@ -38,17 +38,17 @@
 
     body {
       padding:
-        max(6px, env(safe-area-inset-top))
+        max(4px, env(safe-area-inset-top))
         6px
         max(10px, env(safe-area-inset-bottom))
         6px;
     }
 
     .app {
-      height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px);
+      height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 14px);
       display: grid;
       grid-template-rows: auto minmax(0, 56dvh) minmax(0, 1fr);
-      gap: 6px;
+      gap: 4px;
       overflow: hidden;
     }
 
@@ -62,32 +62,13 @@
     }
 
     .header-card {
-      padding: 8px 10px;
-    }
-
-    .badge {
-      display: inline-block;
-      width: fit-content;
-      padding: 2px 8px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: #111827;
-      color: var(--muted);
-      font-size: 10px;
-      margin-bottom: 3px;
+      padding: 6px 10px;
     }
 
     h1 {
       margin: 0;
-      font-size: 16px;
+      font-size: 15px;
       line-height: 1.05;
-    }
-
-    .muted {
-      color: var(--muted);
-      font-size: 10px;
-      line-height: 1.2;
-      margin-top: 2px;
     }
 
     .preview-card {
@@ -177,7 +158,7 @@
 
     .controls {
       display: grid;
-      grid-template-rows: auto auto auto auto;
+      grid-template-rows: auto auto auto auto auto;
       gap: 6px;
       min-height: 0;
       padding-bottom: calc(env(safe-area-inset-bottom) + 4px);
@@ -315,6 +296,15 @@
       overflow: auto;
     }
 
+    .footer-meta {
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.25;
+      text-align: center;
+      opacity: 0.9;
+      padding-top: 1px;
+    }
+
     @media (max-width: 980px) {
       .app {
         grid-template-rows: auto minmax(0, 56dvh) minmax(0, 1fr);
@@ -332,9 +322,7 @@
 <body>
   <main class="app">
     <section class="card header-card">
-      <div class="badge">Torik IOL Marker</div>
       <h1>Torik IOL Marker</h1>
-      <div class="muted">v1.48 • Kompakt mobil düzen • Tek ana buton • Torch overlay sağ alt</div>
     </section>
 
     <section class="card preview-card">
@@ -407,6 +395,7 @@
       </div>
 
       <div class="status" id="status">Hazır. Tek buton: önce izin ve başlat, sonra foto çek.</div>
+      <div class="footer-meta" id="buildInfo">v1.49 • Güncelleme: 2026-04-03 10:44</div>
     </section>
   </main>
 
