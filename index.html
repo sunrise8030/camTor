@@ -142,6 +142,32 @@
       backdrop-filter: blur(10px);
     }
 
+    .overlay-corner-actions {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      z-index: 4;
+      pointer-events: auto;
+    }
+
+    .overlay-icon-btn {
+      width: 50px;
+      height: 50px;
+      min-height: 50px;
+      padding: 0;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(12, 16, 22, 0.34);
+      backdrop-filter: blur(10px);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.08),
+        0 6px 14px rgba(0,0,0,0.18);
+    }
+
+    .overlay-icon-btn .btn-icon {
+      font-size: 22px;
+    }
+
     .controls {
       display: grid;
       grid-template-rows: auto auto auto auto;
@@ -160,9 +186,28 @@
 
     .action-grid {
       display: grid;
-      grid-template-columns: 1.4fr 1fr 1fr;
+      grid-template-columns: 1fr;
       gap: 6px;
       align-items: end;
+    }
+
+    .capture-row {
+      display: grid;
+      grid-template-columns: 68px 1fr;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .mini-square-btn {
+      width: 68px;
+      height: 68px;
+      min-height: 68px;
+      padding: 0;
+      border-radius: 16px;
+    }
+
+    .mini-square-btn .btn-icon {
+      font-size: 24px;
     }
 
     label.field {
@@ -230,7 +275,7 @@
     .success { border-color: rgba(88, 211, 141, 0.45); }
 
     .capture-primary {
-      min-height: 84px;
+      min-height: 68px;
       font-size: 18px;
       font-weight: 800;
       border-radius: 16px;
@@ -263,10 +308,6 @@
 
       .span-3 { grid-column: span 3; }
       .span-6 { grid-column: span 6; }
-
-      .action-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
     }
   </style>
 </head>
@@ -275,7 +316,7 @@
     <section class="card">
       <div class="badge">Torik IOL Marker</div>
       <h1>Torik IOL Marker</h1>
-      <div class="muted">v1.46 • Tek ana buton • Reciprocal düzeltildi • Kalibre yok</div>
+      <div class="muted">v1.47 • Tek ana buton • Torch overlay sağ alt • Yenile foto solunda</div>
     </section>
 
     <section class="card preview-card">
@@ -286,6 +327,12 @@
         <div class="preview-head">
           <div class="pill">📸 Foto</div>
           <div class="pill" id="streamPill">Hazır değil</div>
+        </div>
+
+        <div class="overlay-corner-actions">
+          <button id="torchBtn" class="overlay-icon-btn" type="button" disabled aria-label="Torch">
+            <span class="btn-icon" id="torchIcon">💡</span>
+          </button>
         </div>
       </div>
     </section>
@@ -328,25 +375,18 @@
           Kamera
           <select id="videoDevice"></select>
         </label>
-
-        <label class="field">
-          Torch
-          <button id="torchBtn" type="button" disabled>
-            <span class="btn-icon" id="torchIcon">💡</span>
-            <span id="torchLabel">Torch Aç</span>
-          </button>
-        </label>
-
-        <button id="refreshBtn" type="button" disabled>
-          <span class="btn-icon">🔄</span>
-          <span>Yenile</span>
-        </button>
       </div>
 
-      <button id="mainActionBtn" class="success capture-primary" type="button">
-        <span class="btn-icon" id="mainActionIcon">🔓</span>
-        <span id="mainActionLabel">İzin Ver ve Başlat</span>
-      </button>
+      <div class="capture-row">
+        <button id="refreshBtn" class="mini-square-btn" type="button" disabled aria-label="Yenile">
+          <span class="btn-icon">🔄</span>
+        </button>
+
+        <button id="mainActionBtn" class="success capture-primary" type="button">
+          <span class="btn-icon" id="mainActionIcon">🔓</span>
+          <span id="mainActionLabel">İzin Ver ve Başlat</span>
+        </button>
+      </div>
 
       <div class="status" id="status">Hazır. Tek buton: önce izin ve başlat, sonra foto çek.</div>
     </section>
@@ -372,7 +412,6 @@
     const refreshBtnEl = document.getElementById("refreshBtn");
     const torchBtnEl = document.getElementById("torchBtn");
     const torchIconEl = document.getElementById("torchIcon");
-    const torchLabelEl = document.getElementById("torchLabel");
 
     const statusEl = document.getElementById("status");
     const streamPillEl = document.getElementById("streamPill");
@@ -550,13 +589,11 @@
 
     function updateTorchUi() {
       if (!torchSupported) {
-        torchLabelEl.textContent = "Torch Yok";
         torchIconEl.textContent = "🚫";
         torchBtnEl.disabled = true;
         return;
       }
 
-      torchLabelEl.textContent = torchEnabled ? "Torch Kapat" : "Torch Aç";
       torchIconEl.textContent = torchEnabled ? "🔦" : "💡";
       torchBtnEl.disabled = !currentTrack;
     }
