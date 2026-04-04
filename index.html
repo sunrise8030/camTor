@@ -1034,62 +1034,168 @@
 
       ctx.restore();
     }
-
     function drawOverlayOnContext(ctx, width, height, rollDeg, targetDeg) {
-      if (!ctx) return;
+  if (!ctx) return null;
 
-      ctx.clearRect(0, 0, width, height);
+  ctx.clearRect(0, 0, width, height);
 
-      const cx = width / 2;
-      const cy = height / 2;
-      const radius = Math.min(width, height) * 0.33;
-      const ringRadius = radius;
-      const innerActiveRadius = ringRadius * 0.72;
-      const outerActiveRadius = ringRadius * 1.03;
-      const halfLineWidth = radius * 1.14;
+  const cx = width / 2;
+  const cy = height / 2;
+  const radius = Math.min(width, height) * 0.33;
 
-      ctx.save();
-      ctx.translate(cx, cy);
+  const outerRingRadius = radius;
+  const innerNumberRingRadius = radius * 0.74;
 
-      ctx.beginPath();
-      ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-      ctx.lineWidth = Math.max(2.2, ringRadius * 0.0105);
-      ctx.strokeStyle = "rgba(255,255,255,0.46)";
-      ctx.stroke();
+  const innerActiveRadius = outerRingRadius * 0.72;
+  const outerActiveRadius = outerRingRadius * 1.03;
+  const halfLineWidth = radius * 1.14;
 
-      for (let deg = 0; deg < 180; deg += 5) {
-        const rad = angleToCanvasRad(deg);
-        const opposite = angleToCanvasRad(deg + 180);
-        const isMajor = deg % 30 === 0;
-        const isMid = deg % 10 === 0;
+  ctx.save();
+  ctx.translate(cx, cy);
 
-        const tickOuter = ringRadius + (isMajor ? ringRadius * 0.07 : isMid ? ringRadius * 0.05 : ringRadius * 0.03);
-        const tickInner = ringRadius - (isMajor ? ringRadius * 0.16 : isMid ? ringRadius * 0.11 : ringRadius * 0.07);
+  ctx.beginPath();
+  ctx.arc(0, 0, outerRingRadius, 0, Math.PI * 2);
+  ctx.lineWidth = Math.max(2.2, outerRingRadius * 0.0105);
+  ctx.strokeStyle = "rgba(255,255,255,0.46)";
+  ctx.stroke();
 
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(rad) * tickInner, Math.sin(rad) * tickInner);
-        ctx.lineTo(Math.cos(rad) * tickOuter, Math.sin(rad) * tickOuter);
-        ctx.moveTo(Math.cos(opposite) * tickInner, Math.sin(opposite) * tickInner);
-        ctx.lineTo(Math.cos(opposite) * tickOuter, Math.sin(opposite) * tickOuter);
-        ctx.lineWidth = isMajor ? 2.4 : isMid ? 1.55 : 0.95;
-        ctx.strokeStyle = isMajor ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.38)";
-        ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, 0, innerNumberRingRadius, 0, Math.PI * 2);
+  ctx.lineWidth = Math.max(1.6, outerRingRadius * 0.0065);
+  ctx.strokeStyle = "rgba(255,255,255,0.26)";
+  ctx.stroke();
 
-        if (isMajor) {
-          const labelRadius = ringRadius - ringRadius * 0.18;
-          drawText(
-            ctx,
-            String(deg),
-            Math.cos(rad) * labelRadius,
-            Math.sin(rad) * labelRadius,
-            {
-              font: `800 ${Math.max(11, ringRadius * 0.078)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
-              fillStyle: "rgba(255,255,255,0.97)"
-            }
-          );
-        }
-      }
+  for (let deg = 0; deg < 180; deg += 5) {
+    const rad = angleToCanvasRad(deg);
+    const oppositeRad = angleToCanvasRad(deg + 180);
 
+    const isMajor = deg % 30 === 0;
+    const isMid = deg % 10 === 0;
+
+    const tickOuter = outerRingRadius + (isMajor ? outerRingRadius * 0.07 : isMid ? outerRingRadius * 0.05 : outerRingRadius * 0.03);
+    const tickInner = outerRingRadius - (isMajor ? outerRingRadius * 0.16 : isMid ? outerRingRadius * 0.11 : outerRingRadius * 0.07);
+
+    const outerTickColor = isMajor
+      ? "rgba(255,255,255,0.97)"
+      : isMid
+        ? "rgba(190,215,255,0.55)"
+        : "rgba(255,220,160,0.28)";
+
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(rad) * tickInner, Math.sin(rad) * tickInner);
+    ctx.lineTo(Math.cos(rad) * tickOuter, Math.sin(rad) * tickOuter);
+    ctx.moveTo(Math.cos(oppositeRad) * tickInner, Math.sin(oppositeRad) * tickInner);
+    ctx.lineTo(Math.cos(oppositeRad) * tickOuter, Math.sin(oppositeRad) * tickOuter);
+    ctx.lineWidth = isMajor ? 2.4 : isMid ? 1.55 : 0.95;
+    ctx.strokeStyle = outerTickColor;
+    ctx.stroke();
+
+    const innerTickOuter = innerNumberRingRadius + (isMajor ? innerNumberRingRadius * 0.035 : isMid ? innerNumberRingRadius * 0.025 : innerNumberRingRadius * 0.015);
+    const innerTickInner = innerNumberRingRadius - (isMajor ? innerNumberRingRadius * 0.095 : isMid ? innerNumberRingRadius * 0.065 : innerNumberRingRadius * 0.04);
+
+    const innerTickColor = isMajor
+      ? "rgba(255,255,255,0.72)"
+      : isMid
+        ? "rgba(170,205,255,0.38)"
+        : "rgba(255,210,150,0.18)";
+
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(rad) * innerTickInner, Math.sin(rad) * innerTickInner);
+    ctx.lineTo(Math.cos(rad) * innerTickOuter, Math.sin(rad) * innerTickOuter);
+    ctx.moveTo(Math.cos(oppositeRad) * innerTickInner, Math.sin(oppositeRad) * innerTickInner);
+    ctx.lineTo(Math.cos(oppositeRad) * innerTickOuter, Math.sin(oppositeRad) * innerTickOuter);
+    ctx.lineWidth = isMajor ? 1.4 : isMid ? 1.0 : 0.7;
+    ctx.strokeStyle = innerTickColor;
+    ctx.stroke();
+
+    if (isMajor) {
+      const topLabelRadius = outerRingRadius - outerRingRadius * 0.18;
+      drawText(ctx, String(deg), Math.cos(rad) * topLabelRadius, Math.sin(rad) * topLabelRadius, {
+        font: `800 ${Math.max(11, outerRingRadius * 0.078)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+        fillStyle: "rgba(255,255,255,0.97)"
+      });
+
+      const reciprocal = deg === 0 ? 180 : 180 - deg;
+      const bottomLabelRadius = innerNumberRingRadius - innerNumberRingRadius * 0.12;
+      drawText(ctx, String(reciprocal), Math.cos(oppositeRad) * bottomLabelRadius, Math.sin(oppositeRad) * bottomLabelRadius, {
+        font: `750 ${Math.max(10, outerRingRadius * 0.064)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+        fillStyle: "rgba(180,220,255,0.90)"
+      });
+    }
+  }
+
+  const targetRad = angleToCanvasRad(targetDeg);
+  const oppositeTargetRad = angleToCanvasRad(targetDeg + 180);
+
+  ctx.beginPath();
+  ctx.moveTo(Math.cos(targetRad) * outerRingRadius, Math.sin(targetRad) * outerRingRadius);
+  ctx.lineTo(Math.cos(oppositeTargetRad) * outerRingRadius, Math.sin(oppositeTargetRad) * outerRingRadius);
+  ctx.lineWidth = Math.max(3.2, outerRingRadius * 0.014);
+  ctx.strokeStyle = "rgba(77,163,255,0.98)";
+  ctx.stroke();
+
+  ctx.save();
+  ctx.rotate((rollDeg * Math.PI) / 180);
+
+  ctx.beginPath();
+  ctx.moveTo(-halfLineWidth, 0);
+  ctx.lineTo(halfLineWidth, 0);
+  ctx.lineWidth = Math.max(4.2, outerRingRadius * 0.018);
+  ctx.strokeStyle = "rgba(240,180,41,0.98)";
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(-outerRingRadius * 0.16, 0);
+  ctx.lineTo(outerRingRadius * 0.16, 0);
+  ctx.lineWidth = Math.max(7, outerRingRadius * 0.03);
+  ctx.strokeStyle = "rgba(88,211,141,0.98)";
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(0, -outerRingRadius * 0.24);
+  ctx.lineTo(0, outerRingRadius * 0.24);
+  ctx.lineWidth = Math.max(3, outerRingRadius * 0.013);
+  ctx.strokeStyle = "rgba(255,255,255,0.96)";
+  ctx.stroke();
+
+  ctx.restore();
+
+  ctx.beginPath();
+  ctx.arc(0, 0, Math.max(5, outerRingRadius * 0.024), 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255,255,255,0.98)";
+  ctx.fill();
+
+  ctx.restore();
+
+  const targetLabel = `${String(clampAxis180(targetDeg)).padStart(3, "0")}°`;
+  const tiltLabel = formatSignedAngle(rollDeg);
+
+  ctx.save();
+  const boxWidth = Math.max(150, width * 0.24);
+  const boxHeight = Math.max(56, height * 0.09);
+  const boxX = (width - boxWidth) / 2;
+  const boxY = Math.max(14, height * 0.028);
+  ctx.fillStyle = "rgba(0,0,0,0.34)";
+  ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+  ctx.strokeStyle = "rgba(255,255,255,0.18)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+  ctx.restore();
+
+  drawText(ctx, targetLabel, width / 2, Math.max(42, height * 0.074), {
+    font: `900 ${Math.max(34, Math.round(height * 0.06))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+    fillStyle: "rgba(77,163,255,0.99)"
+  });
+
+  drawText(ctx, tiltLabel, width / 2, height * 0.66, {
+    font: `800 ${Math.max(18, Math.round(height * 0.028))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+    fillStyle: "rgba(240,180,41,0.98)"
+  });
+
+  return { cx, cy, innerActiveRadius, outerActiveRadius };
+}
+
+    
       const targetRad = angleToCanvasRad(targetDeg);
       const oppositeRad = angleToCanvasRad(targetDeg + 180);
 
