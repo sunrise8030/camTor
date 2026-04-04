@@ -13,7 +13,6 @@
       --text: #edf2f7;
       --muted: #a6b0c0;
       --success: #58d38d;
-      --warning: #f0b429;
     }
 
     html {
@@ -161,7 +160,7 @@
 
     .action-grid {
       display: grid;
-      grid-template-columns: 1.3fr 1fr 1fr 1fr;
+      grid-template-columns: 1.4fr 1fr 1fr;
       gap: 6px;
       align-items: end;
     }
@@ -276,7 +275,7 @@
     <section class="card">
       <div class="badge">Torik IOL Marker</div>
       <h1>Torik IOL Marker</h1>
-      <div class="muted">v1.45 • Reciprocal düzeltildi • Çentikler belirginleştirildi</div>
+      <div class="muted">v1.46 • Tek ana buton • Reciprocal düzeltildi • Kalibre yok</div>
     </section>
 
     <section class="card preview-card">
@@ -338,23 +337,18 @@
           </button>
         </label>
 
-        <button id="grantBtn" class="success" type="button">
-          <span class="btn-icon">🔓</span>
-          <span>İzin Ver ve Başlat</span>
-        </button>
-
         <button id="refreshBtn" type="button" disabled>
           <span class="btn-icon">🔄</span>
           <span>Yenile</span>
         </button>
       </div>
 
-      <button id="captureBtn" class="success capture-primary" type="button" disabled>
-        <span class="btn-icon">📸</span>
-        <span>Foto Çek • Paylaş / Kaydet</span>
+      <button id="mainActionBtn" class="success capture-primary" type="button">
+        <span class="btn-icon" id="mainActionIcon">🔓</span>
+        <span id="mainActionLabel">İzin Ver ve Başlat</span>
       </button>
 
-      <div class="status" id="status">Hazır. “İzin Ver ve Başlat” ile önce sensör, sonra kamera izni istenir.</div>
+      <div class="status" id="status">Hazır. Tek buton: önce izin ve başlat, sonra foto çek.</div>
     </section>
   </main>
 
@@ -372,8 +366,9 @@
     const targetAngleInputEl = document.getElementById("targetAngleInput");
     const videoDeviceEl = document.getElementById("videoDevice");
 
-    const grantBtnEl = document.getElementById("grantBtn");
-    const captureBtnEl = document.getElementById("captureBtn");
+    const mainActionBtnEl = document.getElementById("mainActionBtn");
+    const mainActionIconEl = document.getElementById("mainActionIcon");
+    const mainActionLabelEl = document.getElementById("mainActionLabel");
     const refreshBtnEl = document.getElementById("refreshBtn");
     const torchBtnEl = document.getElementById("torchBtn");
     const torchIconEl = document.getElementById("torchIcon");
@@ -566,14 +561,25 @@
       torchBtnEl.disabled = !currentTrack;
     }
 
+    function updateMainActionUi() {
+      const hasStream = Boolean(currentStream);
+
+      if (hasStream) {
+        mainActionIconEl.textContent = "📸";
+        mainActionLabelEl.textContent = "Foto Çek • Paylaş / Kaydet";
+      } else {
+        mainActionIconEl.textContent = "🔓";
+        mainActionLabelEl.textContent = "İzin Ver ve Başlat";
+      }
+    }
+
     function updateUiState() {
       const hasStream = Boolean(currentStream);
-      captureBtnEl.disabled = !hasStream;
       refreshBtnEl.disabled = !permissionGranted;
       videoDeviceEl.disabled = !permissionGranted;
-      grantBtnEl.disabled = permissionGranted && hasStream;
       streamPillEl.textContent = hasStream ? "Canlı" : "Kapalı";
       updateTorchUi();
+      updateMainActionUi();
     }
 
     function updateDiagnosticStatus(prefix = "") {
@@ -590,7 +596,6 @@
 
     function cleanupStream() {
       if (!currentStream) return;
-
       currentStream.getTracks().forEach(track => track.stop());
       currentStream = null;
       currentTrack = null;
@@ -1206,10 +1211,8 @@
     function updateAxisFromPointerEvent(event) {
       const point = event.touches?.[0] || event;
       if (!point) return;
-
       const angle = eventPointToAxisAngle(point.clientX, point.clientY);
       if (angle === null) return;
-
       setTargetAngle(angle);
     }
 
@@ -1279,8 +1282,8 @@
       }
     }
 
-    grantBtnEl.addEventListener("click", async () => {
-      try {
+    async function handleMainAction() {
+      if (!currentStream) {
         await requestSensorPermissionFromGesture();
         updateDiagnosticStatus("Sensör izni alındı.");
 
@@ -1289,7 +1292,7 @@
         await startSelectedCamera();
         updateUiState();
 
-        setTimeout(() => {
+        window.setTimeout(() => {
           if (!lastOrientationAt && !lastMotionAt) {
             sensorSource = "none";
             setStatus(
@@ -1305,6 +1308,16 @@
             updateDiagnosticStatus("Kamera ve sensör hazır.");
           }
         }, 1200);
+
+        return;
+      }
+
+      await capturePhoto();
+    }
+
+    mainActionBtnEl.addEventListener("click", async () => {
+      try {
+        await handleMainAction();
       } catch (error) {
         setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
       }
@@ -1322,14 +1335,6 @@
     videoDeviceEl.addEventListener("change", async () => {
       try {
         await startSelectedCamera();
-      } catch (error) {
-        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
-      }
-    });
-
-    captureBtnEl.addEventListener("click", async () => {
-      try {
-        await capturePhoto();
       } catch (error) {
         setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
       }
