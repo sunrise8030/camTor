@@ -161,7 +161,7 @@
 
     .action-grid {
       display: grid;
-      grid-template-columns: 1.3fr 1fr 1fr 1fr 1fr;
+      grid-template-columns: 1.3fr 1fr 1fr 1fr;
       gap: 6px;
       align-items: end;
     }
@@ -229,7 +229,6 @@
     }
 
     .success { border-color: rgba(88, 211, 141, 0.45); }
-    .warning { border-color: rgba(240, 180, 41, 0.45); }
 
     .capture-primary {
       min-height: 84px;
@@ -277,7 +276,7 @@
     <section class="card">
       <div class="badge">Torik IOL Marker</div>
       <h1>Torik IOL Marker</h1>
-      <div class="muted">v1.43 • 2 satır form • Axl/Hedef senkron • Orientation öncelikli</div>
+      <div class="muted">v1.45 • Reciprocal düzeltildi • Çentikler belirginleştirildi</div>
     </section>
 
     <section class="card preview-card">
@@ -344,11 +343,6 @@
           <span>İzin Ver ve Başlat</span>
         </button>
 
-        <button id="calibrateBtn" type="button" class="warning" disabled>
-          <span class="btn-icon">📐</span>
-          <span>0° Kalibre Et</span>
-        </button>
-
         <button id="refreshBtn" type="button" disabled>
           <span class="btn-icon">🔄</span>
           <span>Yenile</span>
@@ -384,7 +378,6 @@
     const torchBtnEl = document.getElementById("torchBtn");
     const torchIconEl = document.getElementById("torchIcon");
     const torchLabelEl = document.getElementById("torchLabel");
-    const calibrateBtnEl = document.getElementById("calibrateBtn");
 
     const statusEl = document.getElementById("status");
     const streamPillEl = document.getElementById("streamPill");
@@ -406,7 +399,6 @@
     let gravityY = 0;
     let gravityZ = 0;
     let rawRollDeg = 0;
-    let zeroOffsetDeg = 0;
     let eventCount = 0;
 
     let lastGX = 0;
@@ -414,9 +406,6 @@
     let lastGZ = 0;
     let lastBeta = null;
     let lastGamma = null;
-
-    let calibrationSamples = [];
-    let calibrationRunning = false;
 
     let lastHapticStep = null;
     let lastHapticAt = 0;
@@ -526,7 +515,7 @@
     }
 
     function getCurrentRollDeg() {
-      return normalizeSigned180(rawRollDeg - zeroOffsetDeg);
+      return normalizeSigned180(rawRollDeg);
     }
 
     function createTimeStampFilePart(timestamp) {
@@ -583,7 +572,6 @@
       refreshBtnEl.disabled = !permissionGranted;
       videoDeviceEl.disabled = !permissionGranted;
       grantBtnEl.disabled = permissionGranted && hasStream;
-      calibrateBtnEl.disabled = !sensorPermissionGranted || calibrationRunning;
       streamPillEl.textContent = hasStream ? "Canlı" : "Kapalı";
       updateTorchUi();
     }
@@ -847,9 +835,7 @@
     }
 
     function handleDeviceOrientation(event) {
-      if (!Number.isFinite(event.beta) || !Number.isFinite(event.gamma)) {
-        return;
-      }
+      if (!Number.isFinite(event.beta) || !Number.isFinite(event.gamma)) return;
 
       lastBeta = event.beta;
       lastGamma = event.gamma;
@@ -860,11 +846,7 @@
       lastOrientationAt = Date.now();
       recordSensorHit("orientation");
 
-      if (calibrationRunning) {
-        calibrationSamples.push(rawRollDeg);
-      }
-
-      if (!calibrationRunning && eventCount % 5 === 0) {
+      if (eventCount % 5 === 0) {
         updateDiagnosticStatus();
       }
     }
@@ -893,11 +875,7 @@
 
       lastMotionAt = Date.now();
 
-      if (calibrationRunning) {
-        calibrationSamples.push(rawRollDeg);
-      }
-
-      if (!calibrationRunning && eventCount % 5 === 0) {
+      if (eventCount % 5 === 0) {
         updateDiagnosticStatus();
       }
     }
@@ -928,29 +906,6 @@
           ].join("\n")
         );
       }, 1000);
-    }
-
-    async function runCalibration() {
-      if (!sensorPermissionGranted) return;
-
-      calibrationRunning = true;
-      calibrationSamples = [];
-      updateUiState();
-      updateDiagnosticStatus("Kalibrasyon başladı. Telefonu sabit tut.");
-
-      await new Promise(resolve => setTimeout(resolve, 1200));
-
-      if (calibrationSamples.length < 5) {
-        calibrationRunning = false;
-        updateUiState();
-        throw new Error("Yeterli sensör verisi alınamadı.");
-      }
-
-      zeroOffsetDeg = calibrationSamples.reduce((sum, value) => sum + value, 0) / calibrationSamples.length;
-      calibrationRunning = false;
-      updateUiState();
-      drawOverlay();
-      updateDiagnosticStatus("Kalibrasyon tamamlandı.");
     }
 
     function resizeOverlayCanvas() {
@@ -1034,178 +989,174 @@
 
       ctx.restore();
     }
+
     function drawOverlayOnContext(ctx, width, height, rollDeg, targetDeg) {
-  if (!ctx) return null;
+      if (!ctx) return null;
 
-  ctx.clearRect(0, 0, width, height);
+      ctx.clearRect(0, 0, width, height);
 
-  const cx = width / 2;
-  const cy = height / 2;
-  const radius = Math.min(width, height) * 0.33;
+      const cx = width / 2;
+      const cy = height / 2;
+      const radius = Math.min(width, height) * 0.33;
 
-  const outerRingRadius = radius;
-  const innerNumberRingRadius = radius * 0.74;
+      const outerRingRadius = radius;
+      const innerNumberRingRadius = radius * 0.74;
+      const reciprocalLabelRadius = (outerRingRadius + innerNumberRingRadius) * 0.5;
 
-  const innerActiveRadius = outerRingRadius * 0.72;
-  const outerActiveRadius = outerRingRadius * 1.03;
-  const halfLineWidth = radius * 1.14;
+      const innerActiveRadius = outerRingRadius * 0.72;
+      const outerActiveRadius = outerRingRadius * 1.03;
+      const halfLineWidth = radius * 1.14;
 
-  ctx.save();
-  ctx.translate(cx, cy);
+      ctx.save();
+      ctx.translate(cx, cy);
 
-  ctx.beginPath();
-  ctx.arc(0, 0, outerRingRadius, 0, Math.PI * 2);
-  ctx.lineWidth = Math.max(2.2, outerRingRadius * 0.0105);
-  ctx.strokeStyle = "rgba(255,255,255,0.46)";
-  ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, outerRingRadius, 0, Math.PI * 2);
+      ctx.lineWidth = Math.max(2.5, outerRingRadius * 0.0115);
+      ctx.strokeStyle = "rgba(255,255,255,0.50)";
+      ctx.stroke();
 
-  ctx.beginPath();
-  ctx.arc(0, 0, innerNumberRingRadius, 0, Math.PI * 2);
-  ctx.lineWidth = Math.max(1.6, outerRingRadius * 0.0065);
-  ctx.strokeStyle = "rgba(255,255,255,0.26)";
-  ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, innerNumberRingRadius, 0, Math.PI * 2);
+      ctx.lineWidth = Math.max(1.9, outerRingRadius * 0.0075);
+      ctx.strokeStyle = "rgba(190,210,235,0.38)";
+      ctx.stroke();
 
-  for (let deg = 0; deg < 180; deg += 5) {
-    const rad = angleToCanvasRad(deg);
-    const oppositeRad = angleToCanvasRad(deg + 180);
+      for (let deg = 0; deg < 180; deg += 5) {
+        const rad = angleToCanvasRad(deg);
+        const oppositeRad = angleToCanvasRad(deg + 180);
 
-    const isMajor = deg % 30 === 0;
-    const isMid = deg % 10 === 0;
+        const isMajor = deg % 30 === 0;
+        const isMid = deg % 10 === 0;
 
-    const tickOuter = outerRingRadius + (isMajor ? outerRingRadius * 0.07 : isMid ? outerRingRadius * 0.05 : outerRingRadius * 0.03);
-    const tickInner = outerRingRadius - (isMajor ? outerRingRadius * 0.16 : isMid ? outerRingRadius * 0.11 : outerRingRadius * 0.07);
+        const outerTickOuter = outerRingRadius + (isMajor ? outerRingRadius * 0.075 : isMid ? outerRingRadius * 0.055 : outerRingRadius * 0.034);
+        const outerTickInner = outerRingRadius - (isMajor ? outerRingRadius * 0.17 : isMid ? outerRingRadius * 0.12 : outerRingRadius * 0.075);
 
-    const outerTickColor = isMajor
-      ? "rgba(255,255,255,0.97)"
-      : isMid
-        ? "rgba(190,215,255,0.55)"
-        : "rgba(255,220,160,0.28)";
+        const outerTickColor = isMajor
+          ? "rgba(245,248,252,0.98)"
+          : isMid
+            ? "rgba(170,195,225,0.70)"
+            : "rgba(205,185,140,0.42)";
 
-    ctx.beginPath();
-    ctx.moveTo(Math.cos(rad) * tickInner, Math.sin(rad) * tickInner);
-    ctx.lineTo(Math.cos(rad) * tickOuter, Math.sin(rad) * tickOuter);
-    ctx.moveTo(Math.cos(oppositeRad) * tickInner, Math.sin(oppositeRad) * tickInner);
-    ctx.lineTo(Math.cos(oppositeRad) * tickOuter, Math.sin(oppositeRad) * tickOuter);
-    ctx.lineWidth = isMajor ? 2.4 : isMid ? 1.55 : 0.95;
-    ctx.strokeStyle = outerTickColor;
-    ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(rad) * outerTickInner, Math.sin(rad) * outerTickInner);
+        ctx.lineTo(Math.cos(rad) * outerTickOuter, Math.sin(rad) * outerTickOuter);
+        ctx.moveTo(Math.cos(oppositeRad) * outerTickInner, Math.sin(oppositeRad) * outerTickInner);
+        ctx.lineTo(Math.cos(oppositeRad) * outerTickOuter, Math.sin(oppositeRad) * outerTickOuter);
+        ctx.lineWidth = isMajor ? 2.8 : isMid ? 1.9 : 1.1;
+        ctx.strokeStyle = outerTickColor;
+        ctx.stroke();
 
-    const innerTickOuter = innerNumberRingRadius + (isMajor ? innerNumberRingRadius * 0.035 : isMid ? innerNumberRingRadius * 0.025 : innerNumberRingRadius * 0.015);
-    const innerTickInner = innerNumberRingRadius - (isMajor ? innerNumberRingRadius * 0.095 : isMid ? innerNumberRingRadius * 0.065 : innerNumberRingRadius * 0.04);
+        const innerTickOuter = innerNumberRingRadius + (isMajor ? innerNumberRingRadius * 0.04 : isMid ? innerNumberRingRadius * 0.03 : innerNumberRingRadius * 0.018);
+        const innerTickInner = innerNumberRingRadius - (isMajor ? innerNumberRingRadius * 0.10 : isMid ? innerNumberRingRadius * 0.072 : innerNumberRingRadius * 0.046);
 
-    const innerTickColor = isMajor
-      ? "rgba(255,255,255,0.72)"
-      : isMid
-        ? "rgba(170,205,255,0.38)"
-        : "rgba(255,210,150,0.18)";
+        const innerTickColor = isMajor
+          ? "rgba(220,232,246,0.78)"
+          : isMid
+            ? "rgba(170,195,225,0.50)"
+            : "rgba(210,190,150,0.26)";
 
-    ctx.beginPath();
-    ctx.moveTo(Math.cos(rad) * innerTickInner, Math.sin(rad) * innerTickInner);
-    ctx.lineTo(Math.cos(rad) * innerTickOuter, Math.sin(rad) * innerTickOuter);
-    ctx.moveTo(Math.cos(oppositeRad) * innerTickInner, Math.sin(oppositeRad) * innerTickInner);
-    ctx.lineTo(Math.cos(oppositeRad) * innerTickOuter, Math.sin(oppositeRad) * innerTickOuter);
-    ctx.lineWidth = isMajor ? 1.4 : isMid ? 1.0 : 0.7;
-    ctx.strokeStyle = innerTickColor;
-    ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(rad) * innerTickInner, Math.sin(rad) * innerTickInner);
+        ctx.lineTo(Math.cos(rad) * innerTickOuter, Math.sin(rad) * innerTickOuter);
+        ctx.moveTo(Math.cos(oppositeRad) * innerTickInner, Math.sin(oppositeRad) * innerTickInner);
+        ctx.lineTo(Math.cos(oppositeRad) * innerTickOuter, Math.sin(oppositeRad) * innerTickOuter);
+        ctx.lineWidth = isMajor ? 1.7 : isMid ? 1.15 : 0.82;
+        ctx.strokeStyle = innerTickColor;
+        ctx.stroke();
 
-    if (isMajor) {
-  const topLabelRadius = outerRingRadius - outerRingRadius * 0.18;
-  drawText(ctx, String(deg), Math.cos(rad) * topLabelRadius, Math.sin(rad) * topLabelRadius, {
-    font: `800 ${Math.max(11, outerRingRadius * 0.078)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
-    fillStyle: "rgba(255,255,255,0.97)"
-  });
+        if (isMajor) {
+          const topLabelRadius = outerRingRadius - outerRingRadius * 0.18;
 
-  const reciprocal = deg === 0 ? 0 : 180 - deg;
-  const reciprocalLabelRadius = (outerRingRadius + innerNumberRingRadius) * 0.5;
+          drawText(ctx, String(deg), Math.cos(rad) * topLabelRadius, Math.sin(rad) * topLabelRadius, {
+            font: `800 ${Math.max(11, outerRingRadius * 0.078)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+            fillStyle: "rgba(255,255,255,0.97)"
+          });
 
-  drawText(
-    ctx,
-    String(reciprocal),
-    Math.cos(oppositeRad) * reciprocalLabelRadius,
-    Math.sin(oppositeRad) * reciprocalLabelRadius,
-    {
-      font: `750 ${Math.max(10, outerRingRadius * 0.064)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
-      fillStyle: "rgba(180,220,255,0.92)"
+          drawText(
+            ctx,
+            String(deg),
+            Math.cos(oppositeRad) * reciprocalLabelRadius,
+            Math.sin(oppositeRad) * reciprocalLabelRadius,
+            {
+              font: `760 ${Math.max(10, outerRingRadius * 0.063)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+              fillStyle: "rgba(175,215,245,0.95)"
+            }
+          );
+        }
+      }
+
+      const targetRad = angleToCanvasRad(targetDeg);
+      const oppositeTargetRad = angleToCanvasRad(targetDeg + 180);
+
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(targetRad) * outerRingRadius, Math.sin(targetRad) * outerRingRadius);
+      ctx.lineTo(Math.cos(oppositeTargetRad) * outerRingRadius, Math.sin(oppositeTargetRad) * outerRingRadius);
+      ctx.lineWidth = Math.max(3.4, outerRingRadius * 0.015);
+      ctx.strokeStyle = "rgba(77,163,255,0.98)";
+      ctx.stroke();
+
+      ctx.save();
+      ctx.rotate((rollDeg * Math.PI) / 180);
+
+      ctx.beginPath();
+      ctx.moveTo(-halfLineWidth, 0);
+      ctx.lineTo(halfLineWidth, 0);
+      ctx.lineWidth = Math.max(4.4, outerRingRadius * 0.0185);
+      ctx.strokeStyle = "rgba(240,180,41,0.98)";
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(-outerRingRadius * 0.16, 0);
+      ctx.lineTo(outerRingRadius * 0.16, 0);
+      ctx.lineWidth = Math.max(7.5, outerRingRadius * 0.031);
+      ctx.strokeStyle = "rgba(88,211,141,0.98)";
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(0, -outerRingRadius * 0.24);
+      ctx.lineTo(0, outerRingRadius * 0.24);
+      ctx.lineWidth = Math.max(3.1, outerRingRadius * 0.0135);
+      ctx.strokeStyle = "rgba(255,255,255,0.96)";
+      ctx.stroke();
+
+      ctx.restore();
+
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(5, outerRingRadius * 0.024), 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,255,255,0.98)";
+      ctx.fill();
+
+      ctx.restore();
+
+      const targetLabel = `${String(clampAxis180(targetDeg)).padStart(3, "0")}°`;
+      const tiltLabel = formatSignedAngle(rollDeg);
+
+      ctx.save();
+      const boxWidth = Math.max(150, width * 0.24);
+      const boxHeight = Math.max(56, height * 0.09);
+      const boxX = (width - boxWidth) / 2;
+      const boxY = Math.max(14, height * 0.028);
+      ctx.fillStyle = "rgba(0,0,0,0.34)";
+      ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+      ctx.strokeStyle = "rgba(255,255,255,0.18)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+      ctx.restore();
+
+      drawText(ctx, targetLabel, width / 2, Math.max(42, height * 0.074), {
+        font: `900 ${Math.max(34, Math.round(height * 0.06))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+        fillStyle: "rgba(77,163,255,0.99)"
+      });
+
+      drawText(ctx, tiltLabel, width / 2, height * 0.66, {
+        font: `800 ${Math.max(18, Math.round(height * 0.028))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+        fillStyle: "rgba(240,180,41,0.98)"
+      });
+
+      return { cx, cy, innerActiveRadius, outerActiveRadius };
     }
-  );
-}
-}
 
-  const targetRad = angleToCanvasRad(targetDeg);
-  const oppositeTargetRad = angleToCanvasRad(targetDeg + 180);
-
-  ctx.beginPath();
-  ctx.moveTo(Math.cos(targetRad) * outerRingRadius, Math.sin(targetRad) * outerRingRadius);
-  ctx.lineTo(Math.cos(oppositeTargetRad) * outerRingRadius, Math.sin(oppositeTargetRad) * outerRingRadius);
-  ctx.lineWidth = Math.max(3.2, outerRingRadius * 0.014);
-  ctx.strokeStyle = "rgba(77,163,255,0.98)";
-  ctx.stroke();
-
-  ctx.save();
-  ctx.rotate((rollDeg * Math.PI) / 180);
-
-  ctx.beginPath();
-  ctx.moveTo(-halfLineWidth, 0);
-  ctx.lineTo(halfLineWidth, 0);
-  ctx.lineWidth = Math.max(4.2, outerRingRadius * 0.018);
-  ctx.strokeStyle = "rgba(240,180,41,0.98)";
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(-outerRingRadius * 0.16, 0);
-  ctx.lineTo(outerRingRadius * 0.16, 0);
-  ctx.lineWidth = Math.max(7, outerRingRadius * 0.03);
-  ctx.strokeStyle = "rgba(88,211,141,0.98)";
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(0, -outerRingRadius * 0.24);
-  ctx.lineTo(0, outerRingRadius * 0.24);
-  ctx.lineWidth = Math.max(3, outerRingRadius * 0.013);
-  ctx.strokeStyle = "rgba(255,255,255,0.96)";
-  ctx.stroke();
-
-  ctx.restore();
-
-  ctx.beginPath();
-  ctx.arc(0, 0, Math.max(5, outerRingRadius * 0.024), 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(255,255,255,0.98)";
-  ctx.fill();
-
-  ctx.restore();
-
-  const targetLabel = `${String(clampAxis180(targetDeg)).padStart(3, "0")}°`;
-  const tiltLabel = formatSignedAngle(rollDeg);
-
-  ctx.save();
-  const boxWidth = Math.max(150, width * 0.24);
-  const boxHeight = Math.max(56, height * 0.09);
-  const boxX = (width - boxWidth) / 2;
-  const boxY = Math.max(14, height * 0.028);
-  ctx.fillStyle = "rgba(0,0,0,0.34)";
-  ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
-  ctx.strokeStyle = "rgba(255,255,255,0.18)";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
-  ctx.restore();
-
-  drawText(ctx, targetLabel, width / 2, Math.max(42, height * 0.074), {
-    font: `900 ${Math.max(34, Math.round(height * 0.06))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
-    fillStyle: "rgba(77,163,255,0.99)"
-  });
-
-  drawText(ctx, tiltLabel, width / 2, height * 0.66, {
-    font: `800 ${Math.max(18, Math.round(height * 0.028))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
-    fillStyle: "rgba(240,180,41,0.98)"
-  });
-
-  return { cx, cy, innerActiveRadius, outerActiveRadius };
-}
-
-    
-      
-      
-      
     function drawOverlay() {
       resizeOverlayCanvas();
       drawOverlayOnContext(
@@ -1387,14 +1338,6 @@
     torchBtnEl.addEventListener("click", async () => {
       try {
         await toggleTorch();
-      } catch (error) {
-        setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
-      }
-    });
-
-    calibrateBtnEl.addEventListener("click", async () => {
-      try {
-        await runCalibration();
       } catch (error) {
         setStatus(`Hata:\n${error instanceof Error ? error.message : String(error)}`);
       }
