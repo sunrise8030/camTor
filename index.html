@@ -1109,20 +1109,26 @@
     ctx.stroke();
 
     if (isMajor) {
-      const topLabelRadius = outerRingRadius - outerRingRadius * 0.18;
-      drawText(ctx, String(deg), Math.cos(rad) * topLabelRadius, Math.sin(rad) * topLabelRadius, {
-        font: `800 ${Math.max(11, outerRingRadius * 0.078)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
-        fillStyle: "rgba(255,255,255,0.97)"
-      });
+  const topLabelRadius = outerRingRadius - outerRingRadius * 0.18;
+  drawText(ctx, String(deg), Math.cos(rad) * topLabelRadius, Math.sin(rad) * topLabelRadius, {
+    font: `800 ${Math.max(11, outerRingRadius * 0.078)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+    fillStyle: "rgba(255,255,255,0.97)"
+  });
 
-      const reciprocal = deg === 0 ? 0 : 180 - deg;
-const bottomLabelRadius = innerNumberRingRadius - innerNumberRingRadius * 0.12;
-drawText(ctx, String(reciprocal), Math.cos(oppositeRad) * bottomLabelRadius, Math.sin(oppositeRad) * bottomLabelRadius, {
-  font: `750 ${Math.max(10, outerRingRadius * 0.064)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
-  fillStyle: "rgba(180,220,255,0.90)"
-});
+  const reciprocal = deg === 0 ? 0 : 180 - deg;
+  const reciprocalLabelRadius = (outerRingRadius + innerNumberRingRadius) * 0.5;
+
+  drawText(
+    ctx,
+    String(reciprocal),
+    Math.cos(oppositeRad) * reciprocalLabelRadius,
+    Math.sin(oppositeRad) * reciprocalLabelRadius,
+    {
+      font: `750 ${Math.max(10, outerRingRadius * 0.064)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+      fillStyle: "rgba(180,220,255,0.92)"
     }
-  }
+  );
+}
 
   const targetRad = angleToCanvasRad(targetDeg);
   const oppositeTargetRad = angleToCanvasRad(targetDeg + 180);
