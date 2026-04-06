@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
   <title>Torik IOL Marker</title>
+  <meta name="theme-color" content="#0b0f16" />
   <style>
     :root {
       color-scheme: dark;
@@ -17,11 +18,12 @@
       --tab: #0f141b;
       --tab-active: #1d2633;
       --select: #60a5fa;
+      --accent: #4da3ff;
+      --warm: #f0b429;
+      --cool: #7dd3fc;
     }
 
-    html {
-      -webkit-text-size-adjust: 100%;
-    }
+    html { -webkit-text-size-adjust: 100%; }
 
     * {
       box-sizing: border-box;
@@ -30,8 +32,7 @@
       user-select: none;
     }
 
-    html,
-    body {
+    html, body {
       margin: 0;
       width: 100%;
       height: 100%;
@@ -68,6 +69,8 @@
 
     .header-card {
       padding: 6px 10px;
+      display: grid;
+      gap: 4px;
     }
 
     h1 {
@@ -93,8 +96,7 @@
       touch-action: none;
     }
 
-    video,
-    canvas {
+    video, canvas {
       position: absolute;
       inset: 0;
       width: 100%;
@@ -132,7 +134,37 @@
       background: rgba(10, 12, 16, 0.78);
       border: 1px solid rgba(255,255,255,0.12);
       backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      white-space: nowrap;
     }
+
+    .pill.ok { border-color: rgba(88,211,141,0.35); }
+    .pill.warn { border-color: rgba(240,180,41,0.35); }
+    .pill.bad { border-color: rgba(248,113,113,0.35); }
+
+    .gesture-hint {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 6;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 11px;
+      background: rgba(0,0,0,0.58);
+      border: 1px solid rgba(255,255,255,0.14);
+      color: rgba(255,255,255,0.96);
+      opacity: 0;
+      transition: opacity 120ms ease, transform 120ms ease;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .gesture-hint.visible { opacity: 1; }
+    #previewGestureHint { top: 12px; }
+    #modalGestureHint { top: 14px; }
 
     .overlay-corner-actions {
       position: absolute;
@@ -157,9 +189,7 @@
         0 6px 14px rgba(0,0,0,0.18);
     }
 
-    .overlay-icon-btn .btn-icon {
-      font-size: 22px;
-    }
+    .overlay-icon-btn .btn-icon { font-size: 22px; }
 
     .capture-flash {
       position: absolute;
@@ -170,9 +200,7 @@
       z-index: 6;
     }
 
-    .capture-flash.active {
-      animation: captureFlashAnim 180ms ease-out;
-    }
+    .capture-flash.active { animation: captureFlashAnim 180ms ease-out; }
 
     @keyframes captureFlashAnim {
       0% { opacity: 0; }
@@ -204,13 +232,9 @@
       border-radius: 14px;
     }
 
-    .mini-square-btn .btn-icon {
-      font-size: 22px;
-    }
+    .mini-square-btn .btn-icon { font-size: 22px; }
 
-    input,
-    select,
-    button {
+    input, select, button {
       width: 100%;
       min-height: 38px;
       border-radius: 12px;
@@ -221,22 +245,11 @@
       font-size: 14px;
     }
 
-    input[type="number"] {
-      appearance: textfield;
-      -moz-appearance: textfield;
-    }
-
-    input[type="number"]::-webkit-outer-spin-button,
-    input[type="number"]::-webkit-inner-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
-
     button {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 6px;
       cursor: pointer;
       font-weight: 600;
       background:
@@ -249,9 +262,7 @@
         0 8px 18px rgba(0,0,0,0.12);
     }
 
-    button:disabled,
-    input:disabled,
-    select:disabled {
+    button:disabled, input:disabled, select:disabled {
       opacity: 0.55;
       cursor: not-allowed;
     }
@@ -262,13 +273,8 @@
       flex: 0 0 auto;
     }
 
-    .success {
-      border-color: rgba(88, 211, 141, 0.45);
-    }
-
-    .danger {
-      border-color: rgba(248, 113, 113, 0.45);
-    }
+    .success { border-color: rgba(88, 211, 141, 0.45); }
+    .danger { border-color: rgba(248, 113, 113, 0.45); }
 
     .capture-primary {
       min-height: 54px;
@@ -277,9 +283,7 @@
       border-radius: 14px;
     }
 
-    .capture-primary .btn-icon {
-      font-size: 24px;
-    }
+    .capture-primary .btn-icon { font-size: 24px; }
 
     .bottom-panel {
       min-height: 0;
@@ -290,7 +294,7 @@
 
     .tab-row {
       display: grid;
-      grid-template-columns: 1fr 1fr auto;
+      grid-template-columns: 1fr 1fr auto auto;
       gap: 6px;
       align-items: center;
       flex: 0 0 auto;
@@ -309,6 +313,18 @@
       border-color: rgba(255,255,255,0.16);
     }
 
+    .install-btn {
+      min-height: 34px;
+      width: auto;
+      padding: 0 10px;
+      font-size: 12px;
+      border-radius: 10px;
+      display: none;
+      box-shadow: none;
+    }
+
+    .install-btn.visible { display: inline-flex; }
+
     .tab-body {
       min-height: 0;
       border: 1px solid var(--border);
@@ -323,12 +339,10 @@
       min-height: 0;
     }
 
-    .tab-pane.active {
-      display: grid;
-    }
+    .tab-pane.active { display: grid; }
 
     .data-pane {
-      grid-template-rows: auto auto auto;
+      grid-template-rows: auto auto auto auto;
       gap: 6px;
       padding: 8px;
       overflow: auto;
@@ -342,6 +356,7 @@
 
     .span-3 { grid-column: span 3; }
     .span-6 { grid-column: span 6; }
+    .span-12 { grid-column: span 12; }
 
     label.field {
       display: grid;
@@ -349,6 +364,26 @@
       color: var(--muted);
       font-size: 10px;
       min-width: 0;
+    }
+
+    .info-strip {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+
+    .info-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .info-line::-webkit-scrollbar {
+      display: none;
     }
 
     .status {
@@ -361,7 +396,7 @@
       line-height: 1.25;
       white-space: pre-wrap;
       min-height: 52px;
-      max-height: 84px;
+      max-height: 96px;
       overflow: auto;
     }
 
@@ -382,8 +417,8 @@
 
     .gallery-toolbar {
       display: grid;
-      grid-template-columns: 1fr auto auto auto;
-      gap: 6px;
+      grid-template-columns: 1fr repeat(3, 104px);
+      gap: 10px;
       padding: 8px;
       border-bottom: 1px solid var(--border);
       align-items: center;
@@ -392,6 +427,20 @@
     .gallery-counter {
       color: var(--muted);
       font-size: 11px;
+      white-space: nowrap;
+      text-align: left;
+    }
+
+    .toolbar-btn {
+      width: 104px;
+      min-width: 104px;
+      max-width: 104px;
+      min-height: 34px;
+      height: 34px;
+      padding: 0 8px;
+      font-size: 11px;
+      border-radius: 10px;
+      box-shadow: none;
     }
 
     .gallery-list {
@@ -406,6 +455,15 @@
       align-items: start;
       grid-auto-rows: max-content;
       -webkit-overflow-scrolling: touch;
+    }
+
+    .gallery-date-separator {
+      grid-column: 1 / -1;
+      font-size: 10px;
+      color: var(--muted);
+      padding: 4px 2px 2px 2px;
+      border-top: 1px dashed rgba(255,255,255,0.08);
+      margin-top: 2px;
     }
 
     .gallery-empty {
@@ -479,15 +537,13 @@
       padding: 8px;
     }
 
-    .mini-btn {
+    .icon-mini-btn {
       min-height: 32px;
-      font-size: 11px;
+      height: 32px;
+      padding: 0;
+      font-size: 14px;
       border-radius: 10px;
       box-shadow: none;
-    }
-
-    .mini-btn .btn-icon {
-      font-size: 14px;
     }
 
     .capture-preview {
@@ -507,9 +563,7 @@
       opacity: 0;
       transform: translateY(10px) scale(0.95);
       pointer-events: none;
-      transition:
-        opacity 260ms ease,
-        transform 260ms ease;
+      transition: opacity 260ms ease, transform 260ms ease;
       touch-action: none;
     }
 
@@ -559,9 +613,7 @@
       touch-action: none;
     }
 
-    .modal-backdrop.active {
-      display: flex;
-    }
+    .modal-backdrop.active { display: flex; }
 
     .modal-card {
       width: min(100%, 720px);
@@ -576,6 +628,7 @@
       transition: transform 180ms ease;
       touch-action: none;
       will-change: transform;
+      position: relative;
     }
 
     .modal-head {
@@ -606,6 +659,7 @@
       background: #000;
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,0.08);
+      position: relative;
     }
 
     .modal-image {
@@ -621,13 +675,35 @@
       gap: 8px;
     }
 
-    @media (max-width: 980px) {
-      .gallery-list {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
+    .hint-badge {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      padding: 4px 8px;
+      font-size: 10px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.48);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.92);
+      z-index: 7;
+    }
 
-      .capture-preview {
-        width: min(42vw, 210px);
+    input.invalid {
+      border-color: rgba(248,113,113,0.72);
+      box-shadow: 0 0 0 1px rgba(248,113,113,0.20) inset;
+    }
+
+    @media (max-width: 980px) {
+      .gallery-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .capture-preview { width: min(42vw, 210px); }
+      .gallery-toolbar {
+        grid-template-columns: 1fr repeat(3, 96px);
+        gap: 8px;
+      }
+      .toolbar-btn {
+        width: 96px;
+        min-width: 96px;
+        max-width: 96px;
       }
     }
   </style>
@@ -648,6 +724,8 @@
           <div class="pill">📸 Foto</div>
           <div class="pill" id="streamPill">Hazır değil</div>
         </div>
+
+        <div id="previewGestureHint" class="gesture-hint"></div>
 
         <div class="overlay-corner-actions">
           <button id="torchBtn" class="overlay-icon-btn" type="button" disabled aria-label="Torch">
@@ -673,7 +751,8 @@
         <div class="tab-row">
           <button id="dataTabBtn" class="tab-btn active" type="button">Veri</button>
           <button id="galleryTabBtn" class="tab-btn" type="button">Galeri</button>
-          <span class="footer-meta" id="buildInfo">v1.58 • Güncelleme: 2026-04-06 15:05</span>
+          <button id="installBtn" class="install-btn" type="button">📲 Yükle</button>
+          <span class="footer-meta" id="buildInfo">v1.65 • Güncelleme: 2026-04-06 17:05</span>
         </div>
 
         <div class="tab-body">
@@ -681,57 +760,68 @@
             <div class="form-grid">
               <label class="field span-6">
                 İsim
-                <input id="patientNameInput" type="text" placeholder="Örn: Ahmet Yılmaz" />
+                <input id="patientNameInput" type="text" autocomplete="off" placeholder="Örn: Ahmet Yılmaz" />
               </label>
 
               <label class="field span-6">
                 IOL Tipi
-                <input id="iolTypeInput" type="text" placeholder="Torik IOL" />
+                <input id="iolTypeInput" type="text" autocomplete="off" placeholder="Torik IOL" />
               </label>
 
               <label class="field span-3">
                 Sph
-                <input id="sphInput" type="text" inputmode="decimal" placeholder="22.5" />
+                <input id="sphInput" type="text" inputmode="decimal" autocomplete="off" placeholder="22.5" />
               </label>
 
               <label class="field span-3">
                 Cyl
-                <input id="cylInput" type="text" inputmode="decimal" placeholder="-1.25" />
+                <input id="cylInput" type="text" inputmode="decimal" autocomplete="off" placeholder="-1.25" />
               </label>
 
               <label class="field span-3">
                 Axl
-                <input id="axlInput" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="63" />
+                <input id="axlInput" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="63" />
               </label>
 
               <label class="field span-3">
                 Hedef Açı
-                <input id="targetAngleInput" type="text" inputmode="numeric" pattern="[0-9]*" value="63" />
+                <input id="targetAngleInput" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="63" />
               </label>
             </div>
 
             <div class="form-grid">
-              <label class="field span-6">
+              <label class="field span-12">
                 Kamera
                 <select id="videoDevice"></select>
               </label>
             </div>
 
-            <div class="status" id="status">Hazır. Foto çek her sekmede aktiftir. Son foto veri sekmesinde görünür. Aşağı çekerek kapanır, yukarı çekerek paylaşılır.</div>
+            <div class="info-strip">
+              <div class="info-line">
+                <div id="cameraStatePill" class="pill warn">Kamera: Kapalı</div>
+                <div id="sensorStatePill" class="pill warn">Sensör: Bekliyor</div>
+                <div id="qualityPill" class="pill">Çözünürlük: -</div>
+              </div>
+            </div>
+
+            <div class="status" id="status">Hazır. Aşağı çekerek kapat, yukarı çekerek paylaş. Yatay ve 90° kilitleri ±0.5° hassasiyetle renk değiştirir.</div>
           </div>
 
           <div id="galleryPane" class="tab-pane gallery-pane">
             <div class="gallery-toolbar">
-              <div class="gallery-counter" id="galleryCounter">0 öğe</div>
-              <button id="gallerySaveSelectedBtn" class="mini-btn" type="button" disabled>
+              <div class="gallery-counter" id="galleryCounter">0 öğe • 0 seçili</div>
+
+              <button id="galleryToggleSelectBtn" class="toolbar-btn" type="button" disabled>
+                <span class="btn-icon">☑️</span>
+                <span id="galleryToggleSelectLabel">Tümü</span>
+              </button>
+
+              <button id="gallerySaveSelectedBtn" class="toolbar-btn" type="button" disabled>
                 <span class="btn-icon">💾</span>
-                <span>Seçili</span>
+                <span>Seçiliyi Kaydet</span>
               </button>
-              <button id="galleryDownloadAllBtn" class="mini-btn" type="button" disabled>
-                <span class="btn-icon">⬇️</span>
-                <span>Tümü</span>
-              </button>
-              <button id="galleryDeleteSelectedBtn" class="mini-btn danger" type="button" disabled>
+
+              <button id="galleryDeleteSelectedBtn" class="toolbar-btn danger" type="button" disabled>
                 <span class="btn-icon">🗑️</span>
                 <span>Sil</span>
               </button>
@@ -753,12 +843,15 @@
 
   <div id="previewModal" class="modal-backdrop">
     <div id="modalCard" class="modal-card">
+      <div id="modalGestureHint" class="gesture-hint"></div>
+
       <div class="modal-head">
         <div id="modalTitle" class="modal-title">Önizleme</div>
         <button id="modalCloseBtn" class="modal-close" type="button">✕</button>
       </div>
 
       <div class="modal-image-wrap">
+        <div class="hint-badge">↓ Kapat • ↑ Paylaş</div>
         <img id="modalImage" class="modal-image" alt="Büyük önizleme" />
       </div>
 
@@ -807,6 +900,9 @@
 
     const statusEl = document.getElementById("status");
     const streamPillEl = document.getElementById("streamPill");
+    const cameraStatePillEl = document.getElementById("cameraStatePill");
+    const sensorStatePillEl = document.getElementById("sensorStatePill");
+    const qualityPillEl = document.getElementById("qualityPill");
 
     const dataTabBtnEl = document.getElementById("dataTabBtn");
     const galleryTabBtnEl = document.getElementById("galleryTabBtn");
@@ -816,12 +912,14 @@
     const galleryListEl = document.getElementById("galleryList");
     const galleryEmptyEl = document.getElementById("galleryEmpty");
     const galleryCounterEl = document.getElementById("galleryCounter");
-    const galleryDownloadAllBtnEl = document.getElementById("galleryDownloadAllBtn");
     const gallerySaveSelectedBtnEl = document.getElementById("gallerySaveSelectedBtn");
     const galleryDeleteSelectedBtnEl = document.getElementById("galleryDeleteSelectedBtn");
+    const galleryToggleSelectBtnEl = document.getElementById("galleryToggleSelectBtn");
+    const galleryToggleSelectLabelEl = document.getElementById("galleryToggleSelectLabel");
 
     const capturePreviewBtnEl = document.getElementById("capturePreviewBtn");
     const capturePreviewImgEl = document.getElementById("capturePreviewImg");
+    const previewGestureHintEl = document.getElementById("previewGestureHint");
 
     const previewModalEl = document.getElementById("previewModal");
     const modalCardEl = document.getElementById("modalCard");
@@ -831,10 +929,13 @@
     const modalSaveBtnEl = document.getElementById("modalSaveBtn");
     const modalDeleteBtnEl = document.getElementById("modalDeleteBtn");
     const modalDismissBtnEl = document.getElementById("modalDismissBtn");
+    const modalGestureHintEl = document.getElementById("modalGestureHint");
+
+    const installBtnEl = document.getElementById("installBtn");
 
     const audioState = { ctx: null };
-
     let db = null;
+    let deferredInstallPrompt = null;
 
     let currentStream = null;
     let currentTrack = null;
@@ -870,6 +971,8 @@
     let lastMotionAt = 0;
     let sensorFailureShown = false;
 
+    let captureResolutionText = "-";
+
     const galleryItems = [];
     let modalItemId = null;
     let activeTab = "data";
@@ -880,7 +983,9 @@
       active: false,
       pointerId: null,
       startY: 0,
+      startX: 0,
       currentY: 0,
+      currentX: 0,
       dragging: false
     };
 
@@ -888,7 +993,9 @@
       active: false,
       pointerId: null,
       startY: 0,
+      startX: 0,
       currentY: 0,
+      currentX: 0,
       dragging: false
     };
 
@@ -949,6 +1056,50 @@
       return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
     }
 
+    function sanitizeDecimalInput(raw, allowNegative = true) {
+      let value = String(raw ?? "").replace(",", ".").replace(/[^\d.\-]/g, "");
+      if (!allowNegative) value = value.replace(/-/g, "");
+      const negative = allowNegative && value.startsWith("-");
+      value = value.replace(/-/g, "");
+      const parts = value.split(".");
+      const intPart = parts.shift() ?? "";
+      const fracPart = parts.length ? parts.join("") : "";
+      return `${negative ? "-" : ""}${intPart}${fracPart ? `.${fracPart}` : ""}`;
+    }
+
+    function sanitizeIntegerInput(raw) {
+      return String(raw ?? "").replace(/[^\d]/g, "");
+    }
+
+    function normalizeAngleFieldInput(inputEl, fallback = 0) {
+      const cleaned = sanitizeIntegerInput(inputEl.value);
+      if (cleaned === "") {
+        inputEl.value = "";
+        inputEl.classList.remove("invalid");
+        return fallback;
+      }
+      const clamped = clampAxis180(cleaned);
+      inputEl.value = String(clamped);
+      inputEl.classList.remove("invalid");
+      return clamped;
+    }
+
+    function normalizeDecimalFieldInput(inputEl, { min = -999, max = 999, allowNegative = true } = {}) {
+      const cleaned = sanitizeDecimalInput(inputEl.value, allowNegative);
+      inputEl.value = cleaned;
+      if (cleaned === "" || cleaned === "-") {
+        inputEl.classList.remove("invalid");
+        return null;
+      }
+      const number = Number(cleaned);
+      if (!Number.isFinite(number) || number < min || number > max) {
+        inputEl.classList.add("invalid");
+        return null;
+      }
+      inputEl.classList.remove("invalid");
+      return number;
+    }
+
     function setActiveTab(tab) {
       activeTab = tab;
       const isData = tab === "data";
@@ -984,13 +1135,13 @@
 
     function syncAxisFieldsFrom(source) {
       if (source === "axl") {
-        const value = clampAxis180(axlInputEl.value || 0);
+        const value = normalizeAngleFieldInput(axlInputEl, 0);
         axlInputEl.value = String(value);
         targetAngleInputEl.value = String(value);
         return value;
       }
 
-      const value = clampAxis180(targetAngleInputEl.value || 0);
+      const value = normalizeAngleFieldInput(targetAngleInputEl, 0);
       targetAngleInputEl.value = String(value);
       axlInputEl.value = String(value);
       return value;
@@ -1012,6 +1163,11 @@
       return normalizeSigned180(rawRollDeg);
     }
 
+    function getAxisDiffDeg(angleA, angleB) {
+      const delta = Math.abs(((angleA - angleB + 90) % 180) - 90);
+      return Math.abs(delta);
+    }
+
     function createTimeStampFilePart(timestamp) {
       const d = new Date(timestamp);
       return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}_${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
@@ -1020,6 +1176,11 @@
     function formatDateTime(timestamp) {
       const d = new Date(timestamp);
       return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+    }
+
+    function formatDateOnly(timestamp) {
+      const d = new Date(timestamp);
+      return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
     }
 
     function sanitizePart(value, fallback = "x") {
@@ -1077,24 +1238,44 @@
       mainActionLabelEl.textContent = "Foto Çek";
     }
 
+    function updateStatePills() {
+      cameraStatePillEl.textContent = `Kamera: ${currentStream ? "Canlı" : "Kapalı"}`;
+      cameraStatePillEl.className = `pill ${currentStream ? "ok" : "warn"}`;
+
+      const sensorOk = Date.now() - lastSensorAt < SENSOR_TIMEOUT_MS && sensorPermissionGranted;
+      const sensorLabel = sensorPermissionGranted
+        ? (sensorOk ? `Sensör: ${sensorSource}` : "Sensör: Veri yok")
+        : "Sensör: Bekliyor";
+
+      sensorStatePillEl.textContent = sensorLabel;
+      sensorStatePillEl.className = `pill ${sensorOk ? "ok" : sensorPermissionGranted ? "bad" : "warn"}`;
+
+      qualityPillEl.textContent = `Çözünürlük: ${captureResolutionText}`;
+    }
+
     function updateGalleryUi() {
       const selectedCount = getSelectedGalleryItems().length;
-      galleryCounterEl.textContent = `${galleryItems.length} öğe • ${selectedCount} seçili`;
-      galleryDownloadAllBtnEl.disabled = galleryItems.length === 0;
+      const totalCount = galleryItems.length;
+      const allSelected = totalCount > 0 && selectedCount === totalCount;
+
+      galleryCounterEl.textContent = `${totalCount} öğe • ${selectedCount} seçili`;
       gallerySaveSelectedBtnEl.disabled = selectedCount === 0;
       galleryDeleteSelectedBtnEl.disabled = selectedCount === 0;
-      galleryEmptyEl.style.display = galleryItems.length === 0 ? "block" : "none";
+      galleryToggleSelectBtnEl.disabled = totalCount === 0;
+      galleryToggleSelectLabelEl.textContent = allSelected ? "Kaldır" : "Tümü";
+      galleryEmptyEl.style.display = totalCount === 0 ? "block" : "none";
+      galleryEmptyEl.textContent = "Henüz foto yok.";
     }
 
     function updateUiState() {
-      const hasStream = Boolean(currentStream);
       refreshBtnEl.disabled = !permissionGranted;
       videoDeviceEl.disabled = !permissionGranted;
-      streamPillEl.textContent = hasStream ? "Canlı" : "Kapalı";
+      streamPillEl.textContent = currentStream ? "Canlı" : "Kapalı";
       updateTorchUi();
       updateMainActionUi();
       updateGalleryUi();
       updateCapturePreviewVisibility();
+      updateStatePills();
     }
 
     function updateDiagnosticStatus(prefix = "") {
@@ -1106,7 +1287,9 @@
       lines.push(`orientation=${lastOrientationAt ? "ok" : "yok"} • motion=${lastMotionAt ? "ok" : "yok"}`);
       lines.push(`beta=${Number.isFinite(lastBeta) ? lastBeta.toFixed(1) : "-"} • gamma=${Number.isFinite(lastGamma) ? lastGamma.toFixed(1) : "-"}`);
       lines.push(`gx=${lastGX.toFixed(2)} • gy=${lastGY.toFixed(2)} • gz=${lastGZ.toFixed(2)}`);
+      lines.push(`quality=${captureResolutionText}`);
       setStatus(lines.join("\n"));
+      updateStatePills();
     }
 
     function cleanupStream() {
@@ -1116,13 +1299,10 @@
       currentTrack = null;
       torchSupported = false;
       torchEnabled = false;
+      captureResolutionText = "-";
       videoEl.pause();
       videoEl.srcObject = null;
       streamPillEl.textContent = "Kapalı";
-    }
-
-    function getSelectedDeviceLabel() {
-      return videoDeviceEl.options[videoDeviceEl.selectedIndex]?.textContent ?? "-";
     }
 
     function downloadBlob(blob, fileName) {
@@ -1142,16 +1322,11 @@
       if (navigator.share && navigator.canShare) {
         try {
           if (navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: fileName
-            });
+            await navigator.share({ files: [file], title: fileName });
             return "shared";
           }
         } catch (error) {
-          if (error?.name === "AbortError") {
-            return "cancelled";
-          }
+          if (error?.name === "AbortError") return "cancelled";
         }
       }
 
@@ -1175,9 +1350,7 @@
     function ensureAudioContext() {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtx) return null;
-      if (!audioState.ctx) {
-        audioState.ctx = new AudioCtx();
-      }
+      if (!audioState.ctx) audioState.ctx = new AudioCtx();
       return audioState.ctx;
     }
 
@@ -1185,28 +1358,20 @@
       const ctx = ensureAudioContext();
       if (!ctx) return;
       if (ctx.state === "suspended") {
-        try {
-          await ctx.resume();
-        } catch (_) {}
+        try { await ctx.resume(); } catch (_) {}
       }
     }
 
     async function playShutterSound() {
       const ctx = ensureAudioContext();
       if (!ctx) return;
-
       if (ctx.state === "suspended") {
-        try {
-          await ctx.resume();
-        } catch (_) {
-          return;
-        }
+        try { await ctx.resume(); } catch (_) { return; }
       }
 
       const now = ctx.currentTime;
-
       const master = ctx.createGain();
-      master.gain.setValueAtTime(0.9, now);
+      master.gain.setValueAtTime(0.95, now);
       master.connect(ctx.destination);
 
       const click1 = ctx.createOscillator();
@@ -1217,7 +1382,6 @@
       click1Gain.gain.setValueAtTime(0.0001, now);
       click1Gain.gain.linearRampToValueAtTime(0.14, now + 0.002);
       click1Gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.028);
-
       click1.connect(click1Gain);
       click1Gain.connect(master);
       click1.start(now);
@@ -1231,7 +1395,6 @@
       click2Gain.gain.setValueAtTime(0.0001, now + 0.038);
       click2Gain.gain.linearRampToValueAtTime(0.11, now + 0.042);
       click2Gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.085);
-
       click2.connect(click2Gain);
       click2Gain.connect(master);
       click2.start(now + 0.038);
@@ -1259,7 +1422,6 @@
       noise.connect(noiseFilter);
       noiseFilter.connect(noiseGain);
       noiseGain.connect(master);
-
       noise.start(now);
       noise.stop(now + 0.10);
     }
@@ -1270,10 +1432,21 @@
       captureFlashEl.classList.add("active");
     }
 
+    function showGestureHint(el, text) {
+      el.textContent = text;
+      el.classList.add("visible");
+    }
+
+    function hideGestureHint(el) {
+      el.classList.remove("visible");
+      el.textContent = "";
+    }
+
     function resetCapturePreviewTransform() {
       capturePreviewBtnEl.style.transition = "";
       capturePreviewBtnEl.style.transform = "";
       capturePreviewBtnEl.style.opacity = "";
+      hideGestureHint(previewGestureHintEl);
     }
 
     function resetModalTransform() {
@@ -1281,14 +1454,13 @@
       modalCardEl.style.transform = "";
       previewModalEl.style.transition = "";
       previewModalEl.style.background = "";
+      hideGestureHint(modalGestureHintEl);
     }
 
     function updateCapturePreviewVisibility() {
       const shouldShow = Boolean(lastCapturedItemId) && !capturePreviewDismissed && activeTab !== "gallery";
       capturePreviewBtnEl.classList.toggle("visible", shouldShow);
-      if (!shouldShow) {
-        resetCapturePreviewTransform();
-      }
+      if (!shouldShow) resetCapturePreviewTransform();
     }
 
     function showLastCapturePreview(item) {
@@ -1371,8 +1543,9 @@
           objectUrl: URL.createObjectURL(saved.blob)
         };
         galleryItems.push(item);
-        galleryListEl.appendChild(createGalleryCard(item));
       }
+
+      renderGallery();
 
       if (galleryItems.length) {
         showLastCapturePreview(galleryItems[0]);
@@ -1460,14 +1633,14 @@
         videoDeviceEl.appendChild(option);
       }
 
+      const ultraWideIndex = videoInputs.findIndex(item => /ultra|0\.5|0,5|wide/i.test(item.label || ""));
       const backIndex = videoInputs.findIndex(item => /triple|arka|back|rear/i.test(item.label || ""));
-      const wideIndex = videoInputs.findIndex(item => /wide|ultra/i.test(item.label || ""));
       const previousIndex = videoInputs.findIndex(item => item.deviceId === previous);
 
       videoDeviceEl.selectedIndex =
         previousIndex >= 0 ? previousIndex :
+        ultraWideIndex >= 0 ? ultraWideIndex :
         backIndex >= 0 ? backIndex :
-        wideIndex >= 0 ? wideIndex :
         0;
     }
 
@@ -1497,9 +1670,7 @@
 
     async function startSelectedCamera() {
       const deviceId = videoDeviceEl.value;
-      if (!deviceId) {
-        throw new Error("Önce kamera seç.");
-      }
+      if (!deviceId) throw new Error("Önce kamera seç.");
 
       cleanupStream();
 
@@ -1507,9 +1678,9 @@
         audio: false,
         video: {
           deviceId: { exact: deviceId },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          frameRate: { ideal: 30 }
+          width: { ideal: 3840, max: 4096 },
+          height: { ideal: 2160, max: 2160 },
+          frameRate: { ideal: 30, max: 60 }
         }
       });
 
@@ -1526,6 +1697,9 @@
       await waitForVideoReady(videoEl);
       await videoEl.play();
       await detectTorchSupport(currentTrack);
+
+      const settings = currentTrack.getSettings?.() || {};
+      captureResolutionText = `${settings.width || videoEl.videoWidth || "-"}x${settings.height || videoEl.videoHeight || "-"}${settings.frameRate ? ` • ${Math.round(settings.frameRate)}fps` : ""}`;
 
       updateUiState();
       resizeOverlayCanvas();
@@ -1545,12 +1719,8 @@
     }
 
     function getScreenAngle() {
-      if (screen.orientation && typeof screen.orientation.angle === "number") {
-        return screen.orientation.angle;
-      }
-      if (typeof window.orientation === "number") {
-        return window.orientation;
-      }
+      if (screen.orientation && typeof screen.orientation.angle === "number") return screen.orientation.angle;
+      if (typeof window.orientation === "number") return window.orientation;
       return 0;
     }
 
@@ -1575,7 +1745,6 @@
 
     function computeRollFromOrientation(beta, gamma) {
       const screenAngle = getScreenAngle();
-
       if (screenAngle === 90) return beta;
       if (screenAngle === -90 || screenAngle === 270) return -beta;
       if (screenAngle === 180) return -gamma;
@@ -1587,6 +1756,7 @@
       lastSensorAt = Date.now();
       eventCount += 1;
       sensorFailureShown = false;
+      updateStatePills();
     }
 
     function handleDeviceOrientation(event) {
@@ -1601,9 +1771,7 @@
       lastOrientationAt = Date.now();
       recordSensorHit("orientation");
 
-      if (eventCount % 5 === 0) {
-        updateDiagnosticStatus();
-      }
+      if (eventCount % 5 === 0) updateDiagnosticStatus();
     }
 
     function handleDeviceMotion(event) {
@@ -1630,9 +1798,7 @@
 
       lastMotionAt = Date.now();
 
-      if (eventCount % 5 === 0) {
-        updateDiagnosticStatus();
-      }
+      if (eventCount % 5 === 0) updateDiagnosticStatus();
     }
 
     function startSensorWatchdog() {
@@ -1650,6 +1816,7 @@
 
         sensorFailureShown = true;
         sensorSource = "none";
+        updateStatePills();
 
         setStatus(
           [
@@ -1702,26 +1869,24 @@
     function drawMetadataOnContext(ctx, width, height) {
       const target = getTargetAngle();
       const now = Date.now();
+      const compactRefractive = `${sphInputEl.value.trim() || "-"} / ${cylInputEl.value.trim() || "-"} / ${String(clampAxis180(axlInputEl.value || 0)).padStart(3, "0")}°`;
 
       const lines = [
         `İsim: ${patientNameInputEl.value.trim() || "-"}`,
         `IOL: ${iolTypeInputEl.value.trim() || "-"}`,
-        `Sph: ${sphInputEl.value.trim() || "-"}`,
-        `Cyl: ${cylInputEl.value.trim() || "-"}`,
-        `Axl: ${String(clampAxis180(axlInputEl.value || 0)).padStart(3, "0")}°`,
+        `Sph/Cyl/Axl: ${compactRefractive}`,
         `Hedef: ${String(target).padStart(3, "0")}°`,
         `Tilt: ${formatSignedAngle(getCurrentRollDeg())}`,
-        `Kamera: ${getSelectedDeviceLabel()}`,
         `Tarih: ${formatDateTime(now)}`
       ];
 
-      const padding = Math.round(width * 0.022);
-      const boxWidth = Math.round(width * 0.50);
-      const lineHeight = Math.max(24, Math.round(height * 0.027));
+      const padding = Math.round(width * 0.020);
+      const boxWidth = Math.round(width * 0.54);
+      const lineHeight = Math.max(22, Math.round(height * 0.025));
       const boxHeight = padding * 2 + lines.length * lineHeight;
 
       ctx.save();
-      ctx.fillStyle = "rgba(0,0,0,0.38)";
+      ctx.fillStyle = "rgba(0,0,0,0.34)";
       ctx.fillRect(padding, height - boxHeight - padding, boxWidth, boxHeight);
       ctx.strokeStyle = "rgba(255,255,255,0.18)";
       ctx.lineWidth = 2;
@@ -1731,10 +1896,10 @@
         drawText(
           ctx,
           line,
-          padding + 16,
+          padding + 14,
           height - boxHeight - padding + padding + index * lineHeight + lineHeight / 2,
           {
-            font: `700 ${Math.max(15, Math.round(height * 0.017))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+            font: `700 ${Math.max(14, Math.round(height * 0.016))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
             fillStyle: "rgba(255,255,255,0.96)",
             align: "left",
             baseline: "middle"
@@ -1762,13 +1927,29 @@
       const outerActiveRadius = outerRingRadius * 1.03;
       const halfLineWidth = radius * 1.14;
 
+      const normalizedRollAxis = ((rollDeg % 180) + 180) % 180;
+      const diffToTarget = getAxisDiffDeg(normalizedRollAxis, targetDeg);
+      const isNearTarget = diffToTarget <= 3;
+
+      const horizontalError = Math.min(
+        Math.abs(normalizedRollAxis - 0),
+        Math.abs(normalizedRollAxis - 180)
+      );
+      const verticalError = Math.abs(normalizedRollAxis - 90);
+
+      const isHorizontalLocked = horizontalError <= 0.5;
+      const isVerticalLocked = verticalError <= 0.5;
+
+      const targetStroke = isNearTarget ? "rgba(88,211,141,0.98)" : "rgba(77,163,255,0.98)";
+      const targetGlow = isNearTarget ? "rgba(88,211,141,0.18)" : "rgba(77,163,255,0.18)";
+
       ctx.save();
       ctx.translate(cx, cy);
 
       ctx.beginPath();
       ctx.arc(0, 0, outerRingRadius, 0, Math.PI * 2);
-      ctx.lineWidth = Math.max(2.5, outerRingRadius * 0.0115);
-      ctx.strokeStyle = "rgba(255,255,255,0.50)";
+      ctx.lineWidth = Math.max(2.6, outerRingRadius * 0.0118);
+      ctx.strokeStyle = "rgba(255,255,255,0.52)";
       ctx.stroke();
 
       ctx.beginPath();
@@ -1777,46 +1958,73 @@
       ctx.strokeStyle = "rgba(190,210,235,0.38)";
       ctx.stroke();
 
+      ctx.beginPath();
+      ctx.arc(0, 0, outerRingRadius * 0.22, 0, Math.PI * 2);
+      ctx.lineWidth = Math.max(1.5, outerRingRadius * 0.006);
+      ctx.strokeStyle = "rgba(255,255,255,0.16)";
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(0, 0, outerRingRadius * 0.39, 0, Math.PI * 2);
+      ctx.lineWidth = Math.max(1.7, outerRingRadius * 0.007);
+      ctx.strokeStyle = "rgba(125,211,252,0.34)";
+      ctx.stroke();
+
       for (let deg = 0; deg < 180; deg += 5) {
         const rad = angleToCanvasRad(deg);
         const oppositeRad = angleToCanvasRad(deg + 180);
 
         const isMajor = deg % 30 === 0;
         const isMid = deg % 10 === 0;
+        const isPrimary = deg === 0 || deg === 90;
 
-        const outerTickOuter = outerRingRadius + (isMajor ? outerRingRadius * 0.075 : isMid ? outerRingRadius * 0.055 : outerRingRadius * 0.034);
-        const outerTickInner = outerRingRadius - (isMajor ? outerRingRadius * 0.17 : isMid ? outerRingRadius * 0.12 : outerRingRadius * 0.075);
+        const outerTickOuter = outerRingRadius + (isPrimary ? outerRingRadius * 0.085 : isMajor ? outerRingRadius * 0.075 : isMid ? outerRingRadius * 0.055 : outerRingRadius * 0.034);
+        const outerTickInner = outerRingRadius - (isPrimary ? outerRingRadius * 0.20 : isMajor ? outerRingRadius * 0.17 : isMid ? outerRingRadius * 0.12 : outerRingRadius * 0.075);
 
-        const outerTickColor = isMajor
-          ? "rgba(245,248,252,0.98)"
-          : isMid
-            ? "rgba(170,195,225,0.70)"
-            : "rgba(205,185,140,0.42)";
+        const tickDiff = getAxisDiffDeg(normalizedRollAxis, deg);
+        const isTickHot = tickDiff <= 6;
+        const tickIntensity = Math.max(0, 1 - tickDiff / 6);
+
+        let outerTickColor = isPrimary
+          ? "rgba(255,255,255,1)"
+          : isMajor
+            ? "rgba(245,248,252,0.98)"
+            : isMid
+              ? "rgba(170,195,225,0.70)"
+              : "rgba(205,185,140,0.42)";
+
+        if (isTickHot) {
+          outerTickColor = `rgba(240,180,41,${0.45 + tickIntensity * 0.5})`;
+        }
 
         ctx.beginPath();
         ctx.moveTo(Math.cos(rad) * outerTickInner, Math.sin(rad) * outerTickInner);
         ctx.lineTo(Math.cos(rad) * outerTickOuter, Math.sin(rad) * outerTickOuter);
         ctx.moveTo(Math.cos(oppositeRad) * outerTickInner, Math.sin(oppositeRad) * outerTickInner);
         ctx.lineTo(Math.cos(oppositeRad) * outerTickOuter, Math.sin(oppositeRad) * outerTickOuter);
-        ctx.lineWidth = isMajor ? 2.8 : isMid ? 1.9 : 1.1;
+        ctx.lineWidth = isTickHot
+          ? (isPrimary ? 3.6 : isMajor ? 3.0 : isMid ? 2.1 : 1.4)
+          : (isPrimary ? 3.2 : isMajor ? 2.8 : isMid ? 1.9 : 1.1);
         ctx.strokeStyle = outerTickColor;
         ctx.stroke();
 
         const innerTickOuter = innerNumberRingRadius + (isMajor ? innerNumberRingRadius * 0.04 : isMid ? innerNumberRingRadius * 0.03 : innerNumberRingRadius * 0.018);
         const innerTickInner = innerNumberRingRadius - (isMajor ? innerNumberRingRadius * 0.10 : isMid ? innerNumberRingRadius * 0.072 : innerNumberRingRadius * 0.046);
 
-        const innerTickColor = isMajor
-          ? "rgba(220,232,246,0.78)"
-          : isMid
-            ? "rgba(170,195,225,0.50)"
-            : "rgba(210,190,150,0.26)";
+        const innerTickColor = isPrimary
+          ? "rgba(235,244,255,0.90)"
+          : isMajor
+            ? "rgba(220,232,246,0.78)"
+            : isMid
+              ? "rgba(170,195,225,0.50)"
+              : "rgba(210,190,150,0.26)";
 
         ctx.beginPath();
         ctx.moveTo(Math.cos(rad) * innerTickInner, Math.sin(rad) * innerTickInner);
         ctx.lineTo(Math.cos(rad) * innerTickOuter, Math.sin(rad) * innerTickOuter);
         ctx.moveTo(Math.cos(oppositeRad) * innerTickInner, Math.sin(oppositeRad) * innerTickInner);
         ctx.lineTo(Math.cos(oppositeRad) * innerTickOuter, Math.sin(oppositeRad) * innerTickOuter);
-        ctx.lineWidth = isMajor ? 1.7 : isMid ? 1.15 : 0.82;
+        ctx.lineWidth = isPrimary ? 2.0 : isMajor ? 1.7 : isMid ? 1.15 : 0.82;
         ctx.strokeStyle = innerTickColor;
         ctx.stroke();
 
@@ -1825,7 +2033,7 @@
 
           drawText(ctx, String(deg), Math.cos(rad) * topLabelRadius, Math.sin(rad) * topLabelRadius, {
             font: `800 ${Math.max(11, outerRingRadius * 0.078)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
-            fillStyle: "rgba(255,255,255,0.97)"
+            fillStyle: isPrimary ? "rgba(255,255,255,1)" : "rgba(255,255,255,0.97)"
           });
 
           drawText(
@@ -1835,44 +2043,100 @@
             Math.sin(oppositeRad) * reciprocalLabelRadius,
             {
               font: `760 ${Math.max(10, outerRingRadius * 0.063)}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
-              fillStyle: "rgba(175,215,245,0.95)"
+              fillStyle: isPrimary ? "rgba(195,230,255,1)" : "rgba(175,215,245,0.95)"
             }
           );
         }
       }
 
+      const dynamicNotchAngle = normalizedRollAxis;
+      const dynamicRad = angleToCanvasRad(dynamicNotchAngle);
+      const dynamicOppRad = angleToCanvasRad(dynamicNotchAngle + 180);
+      const dynamicOuter = outerRingRadius + outerRingRadius * 0.09;
+      const dynamicInner = outerRingRadius - outerRingRadius * 0.21;
+      const dynamicColor = isHorizontalLocked ? "rgba(88,211,141,0.98)" : "rgba(240,180,41,0.98)";
+
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(dynamicRad) * dynamicInner, Math.sin(dynamicRad) * dynamicInner);
+      ctx.lineTo(Math.cos(dynamicRad) * dynamicOuter, Math.sin(dynamicRad) * dynamicOuter);
+      ctx.moveTo(Math.cos(dynamicOppRad) * dynamicInner, Math.sin(dynamicOppRad) * dynamicInner);
+      ctx.lineTo(Math.cos(dynamicOppRad) * dynamicOuter, Math.sin(dynamicOppRad) * dynamicOuter);
+      ctx.lineWidth = Math.max(4.0, outerRingRadius * 0.016);
+      ctx.strokeStyle = dynamicColor;
+      ctx.stroke();
+
       const targetRad = angleToCanvasRad(targetDeg);
       const oppositeTargetRad = angleToCanvasRad(targetDeg + 180);
 
+      ctx.save();
+      ctx.shadowColor = targetGlow;
+      ctx.shadowBlur = Math.max(8, outerRingRadius * 0.06);
       ctx.beginPath();
       ctx.moveTo(Math.cos(targetRad) * outerRingRadius, Math.sin(targetRad) * outerRingRadius);
       ctx.lineTo(Math.cos(oppositeTargetRad) * outerRingRadius, Math.sin(oppositeTargetRad) * outerRingRadius);
-      ctx.lineWidth = Math.max(3.4, outerRingRadius * 0.015);
-      ctx.strokeStyle = "rgba(77,163,255,0.98)";
+      ctx.lineWidth = Math.max(3.6, outerRingRadius * 0.0155);
+      ctx.strokeStyle = targetStroke;
       ctx.stroke();
+      ctx.restore();
 
       ctx.save();
       ctx.rotate((rollDeg * Math.PI) / 180);
+
+      const horizontalGuideColor = isHorizontalLocked
+        ? "rgba(88,211,141,0.98)"
+        : "rgba(240,180,41,0.98)";
+
+      const verticalGuideColor = isVerticalLocked
+        ? "rgba(88,211,141,0.98)"
+        : "rgba(255,255,255,0.96)";
+
+      const centerMarkerColor = isNearTarget
+        ? "rgba(88,211,141,0.99)"
+        : "rgba(88,211,141,0.92)";
+
+      const outerHorizontalGuide = outerRingRadius * 0.98;
+      const innerHorizontalGuide = outerRingRadius * 0.78;
+
+      ctx.beginPath();
+      ctx.moveTo(-outerHorizontalGuide, 0);
+      ctx.lineTo(-innerHorizontalGuide, 0);
+      ctx.moveTo(innerHorizontalGuide, 0);
+      ctx.lineTo(outerHorizontalGuide, 0);
+      ctx.lineWidth = Math.max(2.2, outerRingRadius * 0.0105);
+      ctx.strokeStyle = horizontalGuideColor;
+      ctx.stroke();
 
       ctx.beginPath();
       ctx.moveTo(-halfLineWidth, 0);
       ctx.lineTo(halfLineWidth, 0);
       ctx.lineWidth = Math.max(4.4, outerRingRadius * 0.0185);
-      ctx.strokeStyle = "rgba(240,180,41,0.98)";
+      ctx.strokeStyle = horizontalGuideColor;
       ctx.stroke();
 
       ctx.beginPath();
       ctx.moveTo(-outerRingRadius * 0.16, 0);
       ctx.lineTo(outerRingRadius * 0.16, 0);
       ctx.lineWidth = Math.max(7.5, outerRingRadius * 0.031);
-      ctx.strokeStyle = "rgba(88,211,141,0.98)";
+      ctx.strokeStyle = centerMarkerColor;
+      ctx.stroke();
+
+      const thinVerticalOuter = outerRingRadius * 0.98;
+      const thickVerticalInner = outerRingRadius * 0.24;
+
+      ctx.beginPath();
+      ctx.moveTo(0, -thinVerticalOuter);
+      ctx.lineTo(0, -thickVerticalInner);
+      ctx.moveTo(0, thickVerticalInner);
+      ctx.lineTo(0, thinVerticalOuter);
+      ctx.lineWidth = Math.max(1.6, outerRingRadius * 0.007);
+      ctx.strokeStyle = verticalGuideColor;
       ctx.stroke();
 
       ctx.beginPath();
       ctx.moveTo(0, -outerRingRadius * 0.24);
       ctx.lineTo(0, outerRingRadius * 0.24);
       ctx.lineWidth = Math.max(3.1, outerRingRadius * 0.0135);
-      ctx.strokeStyle = "rgba(255,255,255,0.96)";
+      ctx.strokeStyle = verticalGuideColor;
       ctx.stroke();
 
       ctx.restore();
@@ -1885,11 +2149,11 @@
       ctx.restore();
 
       const targetLabel = `${String(clampAxis180(targetDeg)).padStart(3, "0")}°`;
-      const tiltLabel = formatSignedAngle(rollDeg);
+      const tiltLabel = `${formatSignedAngle(rollDeg)} • Δ${diffToTarget.toFixed(1)}°`;
 
       ctx.save();
-      const boxWidth = Math.max(150, width * 0.24);
-      const boxHeight = Math.max(56, height * 0.09);
+      const boxWidth = Math.max(170, width * 0.28);
+      const boxHeight = Math.max(60, height * 0.095);
       const boxX = (width - boxWidth) / 2;
       const boxY = Math.max(14, height * 0.028);
       ctx.fillStyle = "rgba(0,0,0,0.34)";
@@ -1899,14 +2163,14 @@
       ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
       ctx.restore();
 
-      drawText(ctx, targetLabel, width / 2, Math.max(42, height * 0.074), {
-        font: `900 ${Math.max(34, Math.round(height * 0.06))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
-        fillStyle: "rgba(77,163,255,0.99)"
+      drawText(ctx, targetLabel, width / 2, Math.max(42, height * 0.072), {
+        font: `900 ${Math.max(34, Math.round(height * 0.058))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+        fillStyle: targetStroke
       });
 
       drawText(ctx, tiltLabel, width / 2, height * 0.66, {
-        font: `800 ${Math.max(18, Math.round(height * 0.028))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
-        fillStyle: "rgba(240,180,41,0.98)"
+        font: `800 ${Math.max(17, Math.round(height * 0.026))}px -apple-system, BlinkMacSystemFont, Segoe UI, Arial`,
+        fillStyle: diffToTarget <= 3 ? "rgba(88,211,141,0.98)" : "rgba(240,180,41,0.98)"
       });
 
       return { cx, cy, innerActiveRadius, outerActiveRadius };
@@ -1966,6 +2230,28 @@
       setTargetAngle(angle);
     }
 
+    function renderGallery() {
+      galleryListEl.innerHTML = "";
+      let previousDate = "";
+
+      for (const item of galleryItems) {
+        const itemDate = formatDateOnly(item.createdAt);
+
+        if (itemDate !== previousDate) {
+          const separator = document.createElement("div");
+          separator.className = "gallery-date-separator";
+          separator.textContent = itemDate;
+          galleryListEl.appendChild(separator);
+          previousDate = itemDate;
+        }
+
+        galleryListEl.appendChild(createGalleryCard(item));
+      }
+
+      galleryListEl.appendChild(galleryEmptyEl);
+      updateGalleryUi();
+    }
+
     function createGalleryCard(item) {
       const card = document.createElement("article");
       card.className = "gallery-card";
@@ -1992,20 +2278,26 @@
       actions.className = "gallery-actions";
 
       const saveBtn = document.createElement("button");
-      saveBtn.className = "mini-btn";
+      saveBtn.className = "icon-mini-btn";
       saveBtn.type = "button";
-      saveBtn.innerHTML = `<span class="btn-icon">⬇️</span><span>Kaydet</span>`;
+      saveBtn.setAttribute("aria-label", "Kaydet");
+      saveBtn.title = "Kaydet";
+      saveBtn.textContent = "⬇️";
       saveBtn.addEventListener("click", event => {
         event.stopPropagation();
         downloadBlob(item.blob, item.fileName);
       });
 
       const deleteBtn = document.createElement("button");
-      deleteBtn.className = "mini-btn danger";
+      deleteBtn.className = "icon-mini-btn danger";
       deleteBtn.type = "button";
-      deleteBtn.innerHTML = `<span class="btn-icon">🗑️</span><span>Sil</span>`;
+      deleteBtn.setAttribute("aria-label", "Sil");
+      deleteBtn.title = "Sil";
+      deleteBtn.textContent = "🗑️";
       deleteBtn.addEventListener("click", async event => {
         event.stopPropagation();
+        const yes = window.confirm(`Bu foto silinsin mi?\n${item.fileName}`);
+        if (!yes) return;
         await removeGalleryItem(item.id);
       });
 
@@ -2031,9 +2323,7 @@
         lastTapAt = now;
       }, { passive: false });
 
-      if (item.selected) {
-        card.classList.add("selected");
-      }
+      if (item.selected) card.classList.add("selected");
 
       card.appendChild(thumbWrap);
       card.appendChild(meta);
@@ -2044,6 +2334,7 @@
 
     async function persistGalleryItem(item) {
       if (!db) return;
+
       const stored = {
         id: item.id,
         fileName: item.fileName,
@@ -2052,16 +2343,17 @@
         createdAtLabel: item.createdAtLabel,
         width: item.width,
         height: item.height,
-        size: item.size
+        size: item.size,
+        patientName: item.patientName || "",
+        iolType: item.iolType || ""
       };
+
       await dbPut(stored);
     }
 
     async function addGalleryItem(item) {
       galleryItems.unshift(item);
-      galleryListEl.prepend(createGalleryCard(item));
-      galleryEmptyEl.style.display = "none";
-      updateGalleryUi();
+      renderGallery();
       await persistGalleryItem(item);
     }
 
@@ -2075,6 +2367,15 @@
       updateGalleryUi();
     }
 
+    function toggleSelectAllGalleryItems() {
+      if (!galleryItems.length) return;
+      const allSelected = galleryItems.every(item => item.selected);
+      for (const item of galleryItems) {
+        item.selected = !allSelected;
+      }
+      renderGallery();
+    }
+
     async function removeGalleryItem(id) {
       const index = galleryItems.findIndex(item => item.id === id);
       if (index < 0) return;
@@ -2082,16 +2383,9 @@
       const [item] = galleryItems.splice(index, 1);
       URL.revokeObjectURL(item.objectUrl);
 
-      const card = galleryListEl.querySelector(`[data-id="${CSS.escape(id)}"]`);
-      card?.remove();
+      if (db) await dbDelete(id);
 
-      if (db) {
-        await dbDelete(id);
-      }
-
-      if (modalItemId === id) {
-        closePreviewModal();
-      }
+      if (modalItemId === id) closePreviewModal();
 
       if (lastCapturedItemId === id) {
         const nextItem = galleryItems[0] || null;
@@ -2105,7 +2399,7 @@
         }
       }
 
-      updateGalleryUi();
+      renderGallery();
     }
 
     async function deleteSelectedGalleryItems() {
@@ -2148,6 +2442,14 @@
       capturePreviewBtnEl.style.transition = "none";
       capturePreviewBtnEl.style.transform = `translateY(${limited}px) scale(${1 - Math.min(Math.abs(limited) / 500, 0.12)})`;
       capturePreviewBtnEl.style.opacity = String(opacity);
+
+      if (limited > 8) {
+        showGestureHint(previewGestureHintEl, "↓ Kapat");
+      } else if (limited < -8) {
+        showGestureHint(previewGestureHintEl, "↑ Paylaş");
+      } else {
+        hideGestureHint(previewGestureHintEl);
+      }
     }
 
     function applyModalSwipeTransform(offsetY) {
@@ -2158,15 +2460,26 @@
       previewModalEl.style.transition = "none";
       modalCardEl.style.transform = `translateY(${limited}px) scale(${1 - Math.min(Math.abs(limited) / 700, 0.08)})`;
       previewModalEl.style.background = `rgba(0,0,0,${bgAlpha})`;
+
+      if (limited > 8) {
+        showGestureHint(modalGestureHintEl, "↓ Kapat");
+      } else if (limited < -8) {
+        showGestureHint(modalGestureHintEl, "↑ Paylaş");
+      } else {
+        hideGestureHint(modalGestureHintEl);
+      }
     }
 
     function previewSwipeStart(event) {
       if (!capturePreviewBtnEl.classList.contains("visible")) return;
+
       previewSwipeState.active = true;
       previewSwipeState.dragging = false;
       previewSwipeState.pointerId = event.pointerId;
       previewSwipeState.startY = event.clientY;
+      previewSwipeState.startX = event.clientX;
       previewSwipeState.currentY = event.clientY;
+      previewSwipeState.currentX = event.clientX;
       capturePreviewBtnEl.setPointerCapture?.(event.pointerId);
     }
 
@@ -2174,9 +2487,11 @@
       if (!previewSwipeState.active || previewSwipeState.pointerId !== event.pointerId) return;
 
       previewSwipeState.currentY = event.clientY;
+      previewSwipeState.currentX = event.clientX;
       const dy = previewSwipeState.currentY - previewSwipeState.startY;
+      const dx = previewSwipeState.currentX - previewSwipeState.startX;
 
-      if (Math.abs(dy) > 8) {
+      if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx) * 1.25) {
         previewSwipeState.dragging = true;
         applyPreviewSwipeTransform(dy);
       }
@@ -2194,14 +2509,14 @@
 
       if (previewSwipeState.dragging && shouldClose) {
         dismissCapturePreview();
+        vibratePattern(8);
       } else if (previewSwipeState.dragging && shouldShare) {
         resetCapturePreviewTransform();
+        vibratePattern(8);
         await shareGalleryItemById(lastCapturedItemId);
       } else {
         resetCapturePreviewTransform();
-        if (!previewSwipeState.dragging) {
-          openLastCapturePreview();
-        }
+        if (!previewSwipeState.dragging) openLastCapturePreview();
       }
 
       previewSwipeState.dragging = false;
@@ -2209,11 +2524,14 @@
 
     function modalSwipeStart(event) {
       if (!previewModalEl.classList.contains("active")) return;
+
       modalSwipeState.active = true;
       modalSwipeState.dragging = false;
       modalSwipeState.pointerId = event.pointerId;
       modalSwipeState.startY = event.clientY;
+      modalSwipeState.startX = event.clientX;
       modalSwipeState.currentY = event.clientY;
+      modalSwipeState.currentX = event.clientX;
       modalCardEl.setPointerCapture?.(event.pointerId);
     }
 
@@ -2221,9 +2539,11 @@
       if (!modalSwipeState.active || modalSwipeState.pointerId !== event.pointerId) return;
 
       modalSwipeState.currentY = event.clientY;
+      modalSwipeState.currentX = event.clientX;
       const dy = modalSwipeState.currentY - modalSwipeState.startY;
+      const dx = modalSwipeState.currentX - modalSwipeState.startX;
 
-      if (Math.abs(dy) > 8) {
+      if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx) * 1.25) {
         modalSwipeState.dragging = true;
         applyModalSwipeTransform(dy);
       }
@@ -2241,8 +2561,10 @@
 
       if (modalSwipeState.dragging && shouldClose) {
         closePreviewModal();
+        vibratePattern(8);
       } else if (modalSwipeState.dragging && shouldShare) {
         resetModalTransform();
+        vibratePattern(8);
         await shareGalleryItemById(modalItemId);
       } else {
         resetModalTransform();
@@ -2276,9 +2598,7 @@
 
       input.addEventListener("focus", () => {
         requestAnimationFrame(() => {
-          if (document.activeElement === input) {
-            input.select();
-          }
+          if (document.activeElement === input) input.select();
         });
       });
 
@@ -2299,7 +2619,6 @@
 
         requestAnimationFrame(() => {
           if (document.activeElement !== input) return;
-
           if (isNearEnd) {
             moveCaretToEnd(input);
           } else {
@@ -2309,17 +2628,25 @@
       });
     }
 
+    function attachDecimalSanitizer(inputEl, options) {
+      inputEl.addEventListener("input", () => {
+        normalizeDecimalFieldInput(inputEl, options);
+      });
+
+      inputEl.addEventListener("blur", () => {
+        const parsed = normalizeDecimalFieldInput(inputEl, options);
+        if (parsed !== null) inputEl.value = String(parsed);
+      });
+    }
+
     async function capturePhoto() {
-      if (!currentStream) {
-        throw new Error("Önce kamera açılmalı.");
-      }
+      if (!currentStream) throw new Error("Önce kamera açılmalı.");
 
       const width = videoEl.videoWidth;
       const height = videoEl.videoHeight;
-      if (!width || !height) {
-        throw new Error("Video hazır değil.");
-      }
+      if (!width || !height) throw new Error("Video hazır değil.");
 
+      await new Promise(resolve => setTimeout(resolve, 120));
       playShutterSound();
       flashCapture();
 
@@ -2328,9 +2655,7 @@
       canvas.height = height;
 
       const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("Canvas alınamadı.");
-      }
+      if (!ctx) throw new Error("Canvas alınamadı.");
 
       ctx.drawImage(videoEl, 0, 0, width, height);
 
@@ -2339,9 +2664,7 @@
       overlayCanvas.height = height;
 
       const overlayCanvasCtx = overlayCanvas.getContext("2d");
-      if (!overlayCanvasCtx) {
-        throw new Error("Overlay canvas alınamadı.");
-      }
+      if (!overlayCanvasCtx) throw new Error("Overlay canvas alınamadı.");
 
       drawOverlayOnContext(
         overlayCanvasCtx,
@@ -2378,7 +2701,9 @@
         width,
         height,
         size: blob.size,
-        selected: false
+        selected: false,
+        patientName: patientNameInputEl.value.trim(),
+        iolType: iolTypeInputEl.value.trim()
       };
 
       await addGalleryItem(item);
@@ -2400,6 +2725,7 @@
         window.setTimeout(() => {
           if (!lastOrientationAt && !lastMotionAt) {
             sensorSource = "none";
+            updateStatePills();
             setStatus(
               [
                 "Sensör event gelmiyor.",
@@ -2418,6 +2744,68 @@
       }
 
       await capturePhoto();
+    }
+
+    async function setupPwa() {
+      try {
+        const manifest = {
+          name: "Torik IOL Marker",
+          short_name: "Torik Marker",
+          start_url: ".",
+          display: "standalone",
+          background_color: "#0b0f16",
+          theme_color: "#0b0f16",
+          icons: [{
+            src: "data:image/svg+xml;base64," + btoa(`
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+                <rect width="192" height="192" rx="36" fill="#0b0f16"/>
+                <circle cx="96" cy="96" r="58" fill="none" stroke="#4da3ff" stroke-width="10"/>
+                <circle cx="96" cy="96" r="36" fill="none" stroke="#58d38d" stroke-width="8"/>
+                <line x1="38" y1="96" x2="154" y2="96" stroke="#f0b429" stroke-width="8"/>
+              </svg>
+            `),
+            sizes: "192x192",
+            type: "image/svg+xml"
+          }]
+        };
+
+        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
+        const manifestUrl = URL.createObjectURL(manifestBlob);
+        let link = document.querySelector('link[rel="manifest"]');
+        if (!link) {
+          link = document.createElement("link");
+          link.rel = "manifest";
+          document.head.appendChild(link);
+        }
+        link.href = manifestUrl;
+      } catch (_) {}
+
+      if ("serviceWorker" in navigator) {
+        try {
+          const swCode = `
+            self.addEventListener("install", event => { self.skipWaiting(); });
+            self.addEventListener("activate", event => { event.waitUntil(self.clients.claim()); });
+            self.addEventListener("fetch", event => {});
+          `;
+          const swBlob = new Blob([swCode], { type: "text/javascript" });
+          const swUrl = URL.createObjectURL(swBlob);
+          await navigator.serviceWorker.register(swUrl);
+        } catch (_) {}
+      }
+
+      window.addEventListener("beforeinstallprompt", event => {
+        event.preventDefault();
+        deferredInstallPrompt = event;
+        installBtnEl.classList.add("visible");
+      });
+
+      installBtnEl.addEventListener("click", async () => {
+        if (!deferredInstallPrompt) return;
+        deferredInstallPrompt.prompt();
+        try { await deferredInstallPrompt.userChoice; } catch (_) {}
+        deferredInstallPrompt = null;
+        installBtnEl.classList.remove("visible");
+      });
     }
 
     mainActionBtnEl.addEventListener("click", async () => {
@@ -2456,9 +2844,8 @@
     dataTabBtnEl.addEventListener("click", () => setActiveTab("data"));
     galleryTabBtnEl.addEventListener("click", () => setActiveTab("gallery"));
 
-    galleryDownloadAllBtnEl.addEventListener("click", async () => {
-      if (!galleryItems.length) return;
-      await saveGalleryItems(galleryItems);
+    galleryToggleSelectBtnEl.addEventListener("click", () => {
+      toggleSelectAllGalleryItems();
     });
 
     gallerySaveSelectedBtnEl.addEventListener("click", async () => {
@@ -2470,7 +2857,9 @@
     galleryDeleteSelectedBtnEl.addEventListener("click", async () => {
       const selected = getSelectedGalleryItems();
       if (!selected.length) return;
-      if (!window.confirm(`${selected.length} seçili foto silinsin mi?`)) return;
+      const names = selected.slice(0, 3).map(item => item.fileName).join("\n");
+      const extra = selected.length > 3 ? `\n+${selected.length - 3} daha` : "";
+      if (!window.confirm(`${selected.length} seçili foto silinsin mi?\n\n${names}${extra}`)) return;
       await deleteSelectedGalleryItems();
       updateDiagnosticStatus("Seçili fotoğraflar silindi.");
     });
@@ -2489,9 +2878,7 @@
     modalDismissBtnEl.addEventListener("click", closePreviewModal);
 
     previewModalEl.addEventListener("click", event => {
-      if (event.target === previewModalEl) {
-        closePreviewModal();
-      }
+      if (event.target === previewModalEl) closePreviewModal();
     });
 
     modalSaveBtnEl.addEventListener("click", () => {
@@ -2503,6 +2890,9 @@
 
     modalDeleteBtnEl.addEventListener("click", async () => {
       if (!modalItemId) return;
+      const item = getGalleryItemById(modalItemId);
+      if (!item) return;
+      if (!window.confirm(`Bu foto silinsin mi?\n${item.fileName}`)) return;
       await removeGalleryItem(modalItemId);
     });
 
@@ -2515,16 +2905,31 @@
       targetAngleInputEl
     ].forEach(attachSmartFieldSelection);
 
+    attachDecimalSanitizer(sphInputEl, { min: -99, max: 99, allowNegative: true });
+    attachDecimalSanitizer(cylInputEl, { min: -99, max: 99, allowNegative: true });
+
     targetAngleInputEl.addEventListener("input", () => {
+      targetAngleInputEl.value = sanitizeIntegerInput(targetAngleInputEl.value);
       const value = syncAxisFieldsFrom("target");
       maybeHapticOnAngle(value);
       drawOverlay();
     });
 
     axlInputEl.addEventListener("input", () => {
+      axlInputEl.value = sanitizeIntegerInput(axlInputEl.value);
       const value = syncAxisFieldsFrom("axl");
       maybeHapticOnAngle(value);
       drawOverlay();
+    });
+
+    targetAngleInputEl.addEventListener("blur", () => {
+      const value = normalizeAngleFieldInput(targetAngleInputEl, 63);
+      setTargetAngle(value);
+    });
+
+    axlInputEl.addEventListener("blur", () => {
+      const value = normalizeAngleFieldInput(axlInputEl, 63);
+      setTargetAngle(value);
     });
 
     previewShellEl.addEventListener("pointerdown", event => {
@@ -2565,9 +2970,7 @@
     });
 
     window.addEventListener("keydown", event => {
-      if (event.key === "Escape") {
-        closePreviewModal();
-      }
+      if (event.key === "Escape") closePreviewModal();
     });
 
     window.addEventListener("beforeunload", () => {
@@ -2601,6 +3004,7 @@
       drawOverlay();
       startOverlayLoop();
       startSensorWatchdog();
+      await setupPwa();
 
       try {
         await initDb();
